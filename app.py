@@ -10,7 +10,8 @@ warnings.filterwarnings("ignore")
 
 st.set_page_config(page_title="UFC Analytics", page_icon="🥊", layout="wide")
 
-GROQ_API_KEY = "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"
+import os
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
 @st.cache_data
 def carregar_dados():
