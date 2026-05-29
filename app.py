@@ -6,11 +6,11 @@ import numpy as np
 import requests
 import warnings
 from groq import Groq
+import os
 warnings.filterwarnings("ignore")
 
 st.set_page_config(page_title="UFC Analytics", page_icon="🥊", layout="wide")
 
-import os
 GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 
 @st.cache_data
@@ -125,36 +125,35 @@ def ultimas_lutas(nome, n=3):
         })
     return lutas
 
-def gerar_analise(perfil, lutas):
-    ultimas = ""
-    for l in lutas:
-        ultimas += f"- {l['resultado']} vs {l['adversario']} ({l['data']}) via {l['metodo']} R{l['round']}\n"
-    prompt = f"""Você é um analista especialista em MMA e UFC.
-Com base nos dados abaixo, escreva uma análise curta (3-4 frases) sobre o momento atual do lutador.
-Destaque pontos fortes, pontos fracos e como ele chega para a próxima luta.
-Seja direto e use linguagem de analista esportivo.
-
-Lutador: {perfil['nome']}
-Cartel: {perfil['wins']}V {perfil['losses']}D
-Sequência atual: {perfil['win_streak']} vitórias / {perfil['lose_streak']} derrotas
-KO/Sub/Decisão: {perfil['ko_wins']}/{perfil['sub_wins']}/{perfil['dec_wins']}
-Precisão striking: {perfil['sig_str_pct']}%
-Títulos disputados: {perfil['title_bouts']}
-
-Últimas lutas:
-{ultimas}
-
-Escreva apenas a análise, sem títulos ou introdução."""
-    try:
-        client = Groq(api_key=GROQ_API_KEY)
-        resposta = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=300
-        )
-        return resposta.choices[0].message.content
-    except:
-        return "Análise indisponível no momento."
+def resumo_performance(lutas):
+    if not lutas:
+        return "Sem dados suficientes para análise de performance recente."
+    vitorias = [l for l in lutas if l["resultado"] == "Vitória"]
+    derrotas = [l for l in lutas if l["resultado"] == "Derrota"]
+    n = len(lutas)
+    nv = len(vitorias)
+    nd = len(derrotas)
+    metodos = [l["metodo"] for l in lutas]
+    finalizacoes = sum(1 for m in metodos if "KO" in str(m) or "Submission" in str(m) or "TKO" in str(m))
+    decisoes = sum(1 for m in metodos if "Decision" in str(m))
+    if nv == n:
+        if finalizacoes == n:
+            return f"Lutador em chama — venceu todas as últimas {n} lutas por finalização. Perigoso em qualquer momento."
+        elif finalizacoes > decisoes:
+            return f"Excelente fase — {nv} vitórias nas últimas {n} lutas, maioria por finalização."
+        else:
+            return f"Dominante — {nv} vitórias nas últimas {n} lutas por decisão. Volume alto e resistência excepcional."
+    elif nv > nd:
+        if finalizacoes >= 1:
+            return f"Boa fase com {nv} vitória(s) nas últimas {n} lutas. Mostrou capacidade de finalizar."
+        else:
+            return f"Fase positiva com {nv} vitória(s) nas últimas {n} lutas. Consistente e confiante."
+    elif nd == n:
+        return f"Momento crítico — {nd} derrotas consecutivas nas últimas {n} lutas. Precisa de reestruturação."
+    elif nd > nv:
+        return f"Fase difícil com {nd} derrota(s) nas últimas {n} lutas. Chega em desvantagem psicológica."
+    else:
+        return f"Fase irregular — resultados mistos nas últimas {n} lutas. Difícil de prever."
 
 def gerar_tags(perfil):
     tags = []
@@ -178,11 +177,37 @@ def gerar_tags(perfil):
         tags.append("Experiência no título")
     return tags
 
-def prever_luta_espn(nome_r, nome_b):
-    perfil_r = buscar_lutador(nome_r)
-    perfil_b = buscar_lutador(nome_b)
-    if not perfil_r or not perfil_b:
-        return 50.0, 50.0, perfil_r, perfil_b
+def gerar_analise_ia(perfil, lutas, resumo):
+    ultimas = ""
+    for l in lutas:
+        ultimas += f"- {l['resultado']} vs {l['adversario']} ({l['data']}) via {l['metodo']} R{l['round']}\n"
+    prompt = f"""Você é um analista especialista em MMA e UFC.
+Com base nos dados abaixo, escreva uma análise curta (3-4 frases) sobre o momento atual do lutador.
+Foque especialmente na performance das últimas lutas. Use linguagem de analista esportivo.
+
+Lutador: {perfil['nome']}
+Cartel: {perfil['wins']}V {perfil['losses']}D
+Sequência atual: {perfil['win_streak']} vitórias / {perfil['lose_streak']} derrotas
+KO/Sub/Decisão: {perfil['ko_wins']}/{perfil['sub_wins']}/{perfil['dec_wins']}
+Precisão striking: {perfil['sig_str_pct']}%
+Resumo recente: {resumo}
+
+Últimas lutas:
+{ultimas}
+
+Escreva apenas a análise, sem títulos."""
+    try:
+        client = Groq(api_key=GROQ_API_KEY)
+        resposta = client.chat.completions.create(
+            model="llama-3.1-8b-instant",
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=300
+        )
+        return resposta.choices[0].message.content
+    except:
+        return "Análise indisponível no momento."
+
+def prever_confronto(perfil_r, perfil_b):
     try:
         entrada = [[
             perfil_r["win_streak"], perfil_b["win_streak"],
@@ -196,141 +221,241 @@ def prever_luta_espn(nome_r, nome_b):
             0, 0, 0, 0, 0, 0,
         ]]
         prob = modelo.predict_proba(entrada)[0]
-        return round(prob[1] * 100, 1), round(prob[0] * 100, 1), perfil_r, perfil_b
+        return round(prob[1] * 100, 1), round(prob[0] * 100, 1)
     except:
-        return 50.0, 50.0, perfil_r, perfil_b
+        return 50.0, 50.0
+
+def mostrar_perfil(nome):
+    perfil = buscar_lutador(nome)
+    if not perfil:
+        st.error("Lutador não encontrado.")
+        return
+    lutas = ultimas_lutas(nome)
+    tags = gerar_tags(perfil)
+    resumo = resumo_performance(lutas)
+
+    if st.button("Voltar", key="back"):
+        st.session_state.pagina = "home"
+        st.rerun()
+
+    iniciais = "".join([p[0] for p in nome.split()[:2]]).upper()
+    col_av, col_info = st.columns([1, 4])
+    with col_av:
+        st.markdown(f"""<div style="width:80px;height:80px;border-radius:50%;background:#FCEBEB;border:2px solid #E24B4A;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:500;color:#7F1F1F">{iniciais}</div>""", unsafe_allow_html=True)
+    with col_info:
+        st.markdown(f"## {perfil['nome']}")
+        st.markdown(f"{perfil['altura']} · {perfil['alcance']} alcance · {perfil['peso']} · {perfil['stance']} · {perfil['idade']}")
+        cols = st.columns(3)
+        cols[0].metric("Vitórias", perfil["wins"])
+        cols[1].metric("Derrotas", perfil["losses"])
+        cols[2].metric("Títulos disputados", perfil["title_bouts"])
+    if tags:
+        st.markdown(" ".join([f"`{t}`" for t in tags]))
+
+    st.divider()
+    st.markdown("### Performance recente")
+    vitorias_recentes = sum(1 for l in lutas if l["resultado"] == "Vitória")
+    if vitorias_recentes == len(lutas):
+        st.success(resumo)
+    elif vitorias_recentes == 0:
+        st.error(resumo)
+    else:
+        st.warning(resumo)
+
+    col1, col2, col3 = st.columns(3)
+    for i, luta in enumerate(lutas):
+        col = [col1, col2, col3][i]
+        cor = "🟢" if luta["resultado"] == "Vitória" else "🔴"
+        with col:
+            st.markdown(f"**{cor} vs {luta['adversario']}**")
+            st.caption(f"{luta['metodo']} · R{luta['round']} · {luta['data'][:7]}")
+
+    st.divider()
+    st.markdown("### Estatísticas técnicas")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.progress(min(perfil["sig_str_pct"] / 100, 1.0), text=f"Precisão striking: {perfil['sig_str_pct']}%")
+        st.progress(min(perfil["td_pct"] / 100, 1.0), text=f"Precisão takedown: {perfil['td_pct']}%")
+    with col2:
+        col_a, col_b, col_c = st.columns(3)
+        col_a.metric("KO/TKO", perfil["ko_wins"])
+        col_b.metric("Sub", perfil["sub_wins"])
+        col_c.metric("Dec", perfil["dec_wins"])
+        st.markdown(f"Sequência atual: {perfil['win_streak']} vitórias | Maior: {perfil['longest_win_streak']}")
+
+    st.divider()
+    st.markdown("### Análise IA")
+    with st.spinner("Gerando análise..."):
+        analise = gerar_analise_ia(perfil, lutas, resumo)
+    st.info(analise)
+
+    st.divider()
+    st.markdown("### Analisar confronto")
+    adversario = st.selectbox("Escolha o adversário", options=["Selecione..."] + [l for l in lutadores if l.lower() != nome.lower()], key="adv_sel")
+    if st.button("Analisar", type="primary", key="analisar_btn"):
+        if adversario != "Selecione...":
+            st.session_state.nome_r = nome
+            st.session_state.nome_b = adversario
+            st.session_state.pagina = "confronto"
+            st.rerun()
+
+if "pagina" not in st.session_state:
+    st.session_state.pagina = "home"
+if "lutador_selecionado" not in st.session_state:
+    st.session_state.lutador_selecionado = None
 
 st.markdown("## UFC Analytics")
 st.markdown("Previsão de lutas com inteligência artificial")
 st.divider()
 
-aba1, aba2 = st.tabs(["Analisar confronto", "Próximo evento"])
+if st.session_state.pagina == "perfil" and st.session_state.lutador_selecionado:
+    mostrar_perfil(st.session_state.lutador_selecionado)
 
-with aba1:
-    col1, col2 = st.columns(2)
-    with col1:
-        nome_r = st.selectbox("Canto Vermelho", options=["Selecione um lutador..."] + lutadores, index=0, key="sel_r")
-    with col2:
-        nome_b = st.selectbox("Canto Azul", options=["Selecione um lutador..."] + lutadores, index=0, key="sel_b")
+elif st.session_state.pagina == "confronto":
+    nome_r = st.session_state.get("nome_r", "")
+    nome_b = st.session_state.get("nome_b", "")
+    perfil_r = buscar_lutador(nome_r)
+    perfil_b = buscar_lutador(nome_b)
+    if perfil_r and perfil_b:
+        lutas_r = ultimas_lutas(nome_r)
+        lutas_b = ultimas_lutas(nome_b)
+        resumo_r = resumo_performance(lutas_r)
+        resumo_b = resumo_performance(lutas_b)
+        prob_r, prob_b = prever_confronto(perfil_r, perfil_b)
+        vencedor = perfil_r["nome"] if prob_r > prob_b else perfil_b["nome"]
 
-    if st.button("Analisar confronto", type="primary"):
-        if nome_r == "Selecione um lutador..." or nome_b == "Selecione um lutador...":
-            st.warning("Selecione os dois lutadores para continuar.")
-        elif nome_r == nome_b:
-            st.warning("Selecione lutadores diferentes.")
-        else:
-            perfil_r = buscar_lutador(nome_r)
-            perfil_b = buscar_lutador(nome_b)
-            if not perfil_r:
-                st.error(f"Dados de '{nome_r}' não encontrados.")
-            elif not perfil_b:
-                st.error(f"Dados de '{nome_b}' não encontrados.")
+        if st.button("Voltar", key="back_conf"):
+            st.session_state.pagina = "home"
+            st.rerun()
+
+        col_r, col_b = st.columns(2)
+        with col_r:
+            st.markdown(f"### {perfil_r['nome']}")
+            vr = sum(1 for l in lutas_r if l["resultado"] == "Vitória")
+            if vr == len(lutas_r):
+                st.success(resumo_r)
+            elif vr == 0:
+                st.error(resumo_r)
             else:
-                lutas_r = ultimas_lutas(nome_r)
-                lutas_b = ultimas_lutas(nome_b)
-                tags_r = gerar_tags(perfil_r)
-                tags_b = gerar_tags(perfil_b)
-                entrada = [[
-                    perfil_r["win_streak"], perfil_b["win_streak"],
-                    perfil_r["lose_streak"], perfil_b["lose_streak"],
-                    perfil_r["longest_win_streak"], perfil_b["longest_win_streak"],
-                    perfil_r["wins"], perfil_b["wins"],
-                    perfil_r["losses"], perfil_b["losses"],
-                    perfil_r["sig_str_pct"] / 100, perfil_b["sig_str_pct"] / 100,
-                    perfil_r["td_pct"] / 100, perfil_b["td_pct"] / 100,
-                    perfil_r["sub_att"], perfil_b["sub_att"],
-                    0, 0, 0, 0, 0, 0,
-                ]]
-                prob = modelo.predict_proba(entrada)[0]
-                prob_r = round(prob[1] * 100, 1)
-                prob_b = round(prob[0] * 100, 1)
-                vencedor = perfil_r["nome"] if prob[1] > prob[0] else perfil_b["nome"]
-                with st.spinner("Gerando análise de IA..."):
-                    analise_r = gerar_analise(perfil_r, lutas_r)
-                    analise_b = gerar_analise(perfil_b, lutas_b)
-                col_r, col_b = st.columns(2)
-                with col_r:
-                    st.markdown(f"### {perfil_r['nome']}")
-                    if tags_r:
-                        st.markdown(" ".join([f"`{t}`" for t in tags_r]))
-                    st.markdown(f"**{perfil_r['wins']}V · {perfil_r['losses']}D** | {perfil_r['stance']} | {perfil_r['idade']}")
-                    st.markdown(f"Altura: {perfil_r['altura']} | Alcance: {perfil_r['alcance']} | Peso: {perfil_r['peso']}")
-                    st.progress(min(perfil_r["sig_str_pct"] / 100, 1.0), text=f"Precisão striking: {perfil_r['sig_str_pct']}%")
-                    st.progress(min(perfil_r["td_pct"] / 100, 1.0), text=f"Precisão takedown: {perfil_r['td_pct']}%")
-                    st.markdown(f"KO: {perfil_r['ko_wins']} | Sub: {perfil_r['sub_wins']} | Dec: {perfil_r['dec_wins']}")
-                    st.markdown(f"Sequência: {perfil_r['win_streak']} vitórias | Títulos: {perfil_r['title_bouts']}")
-                    st.markdown("**Últimas lutas**")
-                    for l in lutas_r:
-                        cor = "🟢" if l["resultado"] == "Vitória" else ("🔴" if l["resultado"] == "Derrota" else "🟡")
-                        st.markdown(f"{cor} vs {l['adversario']} ({l['data']}) — {l['metodo']} R{l['round']}")
-                    st.divider()
-                    st.markdown("**Análise IA**")
-                    st.info(analise_r)
-                with col_b:
-                    st.markdown(f"### {perfil_b['nome']}")
-                    if tags_b:
-                        st.markdown(" ".join([f"`{t}`" for t in tags_b]))
-                    st.markdown(f"**{perfil_b['wins']}V · {perfil_b['losses']}D** | {perfil_b['stance']} | {perfil_b['idade']}")
-                    st.markdown(f"Altura: {perfil_b['altura']} | Alcance: {perfil_b['alcance']} | Peso: {perfil_b['peso']}")
-                    st.progress(min(perfil_b["sig_str_pct"] / 100, 1.0), text=f"Precisão striking: {perfil_b['sig_str_pct']}%")
-                    st.progress(min(perfil_b["td_pct"] / 100, 1.0), text=f"Precisão takedown: {perfil_b['td_pct']}%")
-                    st.markdown(f"KO: {perfil_b['ko_wins']} | Sub: {perfil_b['sub_wins']} | Dec: {perfil_b['dec_wins']}")
-                    st.markdown(f"Sequência: {perfil_b['win_streak']} vitórias | Títulos: {perfil_b['title_bouts']}")
-                    st.markdown("**Últimas lutas**")
-                    for l in lutas_b:
-                        cor = "🟢" if l["resultado"] == "Vitória" else ("🔴" if l["resultado"] == "Derrota" else "🟡")
-                        st.markdown(f"{cor} vs {l['adversario']} ({l['data']}) — {l['metodo']} R{l['round']}")
-                    st.divider()
-                    st.markdown("**Análise IA**")
-                    st.info(analise_b)
-                st.divider()
-                st.markdown("### Previsão do modelo")
-                col_p1, col_p2, col_p3 = st.columns([2, 1, 2])
-                with col_p1:
-                    st.metric(perfil_r["nome"], f"{prob_r}%")
-                with col_p2:
-                    st.markdown("<div style='text-align:center;padding-top:20px'>vs</div>", unsafe_allow_html=True)
-                with col_p3:
-                    st.metric(perfil_b["nome"], f"{prob_b}%")
-                st.success(f"Vencedor previsto: {vencedor}")
+                st.warning(resumo_r)
+            st.markdown(f"**{perfil_r['wins']}V · {perfil_r['losses']}D** | {perfil_r['stance']} | {perfil_r['idade']}")
+            st.markdown(f"Altura: {perfil_r['altura']} | Alcance: {perfil_r['alcance']}")
+            st.progress(min(perfil_r["sig_str_pct"] / 100, 1.0), text=f"Striking: {perfil_r['sig_str_pct']}%")
+            st.progress(min(perfil_r["td_pct"] / 100, 1.0), text=f"Takedown: {perfil_r['td_pct']}%")
+            st.markdown("**Últimas lutas**")
+            for l in lutas_r:
+                cor = "🟢" if l["resultado"] == "Vitória" else "🔴"
+                st.markdown(f"{cor} vs {l['adversario']} — {l['metodo']} R{l['round']}")
+            if st.button(f"Ver perfil completo", key="perfil_r"):
+                st.session_state.lutador_selecionado = nome_r
+                st.session_state.pagina = "perfil"
+                st.rerun()
 
-with aba2:
-    st.markdown("### Card do próximo evento — ao vivo via ESPN")
-    if st.button("Atualizar card", key="refresh"):
-        st.cache_data.clear()
-        st.rerun()
-    with st.spinner("Buscando card mais recente..."):
-        df_card = buscar_card_espn()
-    if df_card is None or len(df_card) == 0:
-        st.error("Não foi possível buscar o card. Tente novamente.")
-    else:
-        evento_nome = df_card["evento"].iloc[0]
-        evento_data = df_card["data"].iloc[0]
-        st.markdown(f"**{evento_nome}** | {evento_data}")
+        with col_b:
+            st.markdown(f"### {perfil_b['nome']}")
+            vb = sum(1 for l in lutas_b if l["resultado"] == "Vitória")
+            if vb == len(lutas_b):
+                st.success(resumo_b)
+            elif vb == 0:
+                st.error(resumo_b)
+            else:
+                st.warning(resumo_b)
+            st.markdown(f"**{perfil_b['wins']}V · {perfil_b['losses']}D** | {perfil_b['stance']} | {perfil_b['idade']}")
+            st.markdown(f"Altura: {perfil_b['altura']} | Alcance: {perfil_b['alcance']}")
+            st.progress(min(perfil_b["sig_str_pct"] / 100, 1.0), text=f"Striking: {perfil_b['sig_str_pct']}%")
+            st.progress(min(perfil_b["td_pct"] / 100, 1.0), text=f"Takedown: {perfil_b['td_pct']}%")
+            st.markdown("**Últimas lutas**")
+            for l in lutas_b:
+                cor = "🟢" if l["resultado"] == "Vitória" else "🔴"
+                st.markdown(f"{cor} vs {l['adversario']} — {l['metodo']} R{l['round']}")
+            if st.button(f"Ver perfil completo", key="perfil_b"):
+                st.session_state.lutador_selecionado = nome_b
+                st.session_state.pagina = "perfil"
+                st.rerun()
+
         st.divider()
-        for _, luta in df_card.iterrows():
-            prob_r, prob_b, perfil_r, perfil_b = prever_luta_espn(luta["R_fighter"], luta["B_fighter"])
-            vencedor = luta["R_fighter"] if prob_r >= prob_b else luta["B_fighter"]
-            titulo = " 🏆" if luta.get("title_bout", False) else ""
-            with st.container():
+        st.markdown("### Previsão do modelo")
+        col1, col2, col3 = st.columns([2, 1, 2])
+        with col1:
+            st.metric(perfil_r["nome"], f"{prob_r}%")
+        with col2:
+            st.markdown("<div style='text-align:center;padding-top:20px'>vs</div>", unsafe_allow_html=True)
+        with col3:
+            st.metric(perfil_b["nome"], f"{prob_b}%")
+        st.success(f"Vencedor previsto: {vencedor}")
+
+else:
+    aba1, aba2, aba3 = st.tabs(["Analisar confronto", "Perfil do lutador", "Próximo evento"])
+
+    with aba1:
+        col1, col2 = st.columns(2)
+        with col1:
+            nome_r = st.selectbox("Canto Vermelho", options=["Selecione..."] + lutadores, index=0, key="sel_r")
+        with col2:
+            nome_b = st.selectbox("Canto Azul", options=["Selecione..."] + lutadores, index=0, key="sel_b")
+        if st.button("Analisar confronto", type="primary"):
+            if nome_r == "Selecione..." or nome_b == "Selecione...":
+                st.warning("Selecione os dois lutadores.")
+            elif nome_r == nome_b:
+                st.warning("Selecione lutadores diferentes.")
+            else:
+                st.session_state.nome_r = nome_r
+                st.session_state.nome_b = nome_b
+                st.session_state.pagina = "confronto"
+                st.rerun()
+
+    with aba2:
+        st.markdown("Busque um lutador para ver o perfil completo com performance recente.")
+        nome_busca = st.selectbox("Buscar lutador", options=["Selecione..."] + lutadores, key="busca_perfil")
+        if st.button("Ver perfil", type="primary"):
+            if nome_busca != "Selecione...":
+                st.session_state.lutador_selecionado = nome_busca
+                st.session_state.pagina = "perfil"
+                st.rerun()
+
+    with aba3:
+        st.markdown("### Card do próximo evento — ao vivo via ESPN")
+        if st.button("Atualizar card"):
+            st.cache_data.clear()
+            st.rerun()
+        with st.spinner("Buscando card..."):
+            df_card = buscar_card_espn()
+        if df_card is None or len(df_card) == 0:
+            st.error("Não foi possível buscar o card.")
+        else:
+            st.markdown(f"**{df_card['evento'].iloc[0]}** | {df_card['data'].iloc[0]}")
+            st.divider()
+            for _, luta in df_card.iterrows():
+                perfil_r = buscar_lutador(luta["R_fighter"])
+                perfil_b = buscar_lutador(luta["B_fighter"])
+                if perfil_r and perfil_b:
+                    prob_r, prob_b = prever_confronto(perfil_r, perfil_b)
+                else:
+                    prob_r, prob_b = 50.0, 50.0
+                vencedor = luta["R_fighter"] if prob_r >= prob_b else luta["B_fighter"]
+                titulo = " 🏆" if luta.get("title_bout", False) else ""
                 col1, col2, col3 = st.columns([3, 2, 3])
                 with col1:
                     st.markdown(f"**{luta['R_fighter']}**")
                     if perfil_r:
-                        st.caption(f"{perfil_r['wins']}V · {perfil_r['losses']}D | streak: {perfil_r['win_streak']}")
-                    else:
-                        st.caption("Dados não disponíveis")
+                        st.caption(f"{perfil_r['wins']}V · {perfil_r['losses']}D")
+                    if st.button("Ver perfil", key=f"pr_{luta['R_fighter']}"):
+                        st.session_state.lutador_selecionado = luta["R_fighter"]
+                        st.session_state.pagina = "perfil"
+                        st.rerun()
                 with col2:
-                    st.markdown(f"<div style='text-align:center'><b>vs</b>{titulo}<br><small>Previsão: <b>{vencedor}</b></small></div>", unsafe_allow_html=True)
+                    st.markdown(f"<div style='text-align:center'><b>vs</b>{titulo}<br><small>{vencedor}</small></div>", unsafe_allow_html=True)
                 with col3:
                     st.markdown(f"**{luta['B_fighter']}**")
                     if perfil_b:
-                        st.caption(f"{perfil_b['wins']}V · {perfil_b['losses']}D | streak: {perfil_b['win_streak']}")
-                    else:
-                        st.caption("Dados não disponíveis")
+                        st.caption(f"{perfil_b['wins']}V · {perfil_b['losses']}D")
+                    if st.button("Ver perfil", key=f"pb_{luta['B_fighter']}"):
+                        st.session_state.lutador_selecionado = luta["B_fighter"]
+                        st.session_state.pagina = "perfil"
+                        st.rerun()
                 col_b1, col_b2 = st.columns(2)
                 with col_b1:
-                    st.progress(prob_r / 100, text=f"{luta['R_fighter']}: {prob_r}%")
+                    st.progress(prob_r / 100, text=f"{prob_r}%")
                 with col_b2:
-                    st.progress(prob_b / 100, text=f"{luta['B_fighter']}: {prob_b}%")
+                    st.progress(prob_b / 100, text=f"{prob_b}%")
                 st.divider()
