@@ -3,7 +3,7 @@ name: Weekly UFC Data Update
 on:
   schedule:
     - cron: '0 12 * * 1'  # Every Monday at noon
-  workflow_dispatch:  # Allow manual trigger
+  workflow_dispatch:
 
 jobs:
   update:
@@ -27,6 +27,6 @@ jobs:
         run: |
           git config user.email "action@github.com"
           git config user.name "GitHub Action"
-          git add ufc_master_clean.csv modelo_ufc_v3.pkl features_v3.pkl
+          git add ufc_master_clean.csv modelo_ufc_v3.pkl features_v3.pkl accuracy_history.json predictions_history.json
           git diff --staged --quiet || git commit -m "Auto update: UFC data $(date +%Y-%m-%d)"
           git push
