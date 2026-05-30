@@ -209,7 +209,7 @@ Escreva apenas a análise, sem títulos."""
 
 def prever_confronto(perfil_r, perfil_b):
     try:
-        entrada = [[
+        entrada = pd.DataFrame([[
             perfil_r["win_streak"], perfil_b["win_streak"],
             perfil_r["lose_streak"], perfil_b["lose_streak"],
             perfil_r["longest_win_streak"], perfil_b["longest_win_streak"],
@@ -219,7 +219,8 @@ def prever_confronto(perfil_r, perfil_b):
             perfil_r["td_pct"] / 100, perfil_b["td_pct"] / 100,
             perfil_r["sub_att"], perfil_b["sub_att"],
             0, 0, 0, 0, 0, 0,
-        ]]
+            0, 0, 0, 0, 0, 0, 0, 0,
+        ]], columns=features)
         prob = modelo.predict_proba(entrada)[0]
         return round(prob[1] * 100, 1), round(prob[0] * 100, 1)
     except:
