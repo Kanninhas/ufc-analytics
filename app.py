@@ -16,8 +16,14 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 @st.cache_data
 def carregar_dados():
     df = pd.read_csv("ufc_master_clean.csv")
-    modelo = joblib.load("modelo_ufc_v3.pkl")
+    modelo_obj = joblib.load("modelo_ufc_v3.pkl")
     features = joblib.load("features_v3.pkl")
+    # Handle ensemble (tuple) or single model
+    if isinstance(modelo_obj, tuple):
+        modelo = modelo_obj  # (rf, lr) ensemble
+    else:
+        modelo = modelo_obj
+    return df, modelo, features, lutadores
     todos = pd.concat([df["R_fighter"], df["B_fighter"]]).unique()
     lutadores = sorted(set([l.strip() for l in todos if isinstance(l, str)]))
     return df, modelo, features, lutadores
@@ -228,7 +234,13 @@ def prever_confronto(perfil_r, perfil_b):
             0, 0, 0, 0, 0, 0,
             0, 0, 0, 0, 0, 0, 0, 0,
         ]], columns=features)
-        prob = modelo.predict_proba(entrada)[0]
+        if isinstance(modelo, tuple):
+            rf, lr = modelo
+            prob_rf = rf.predict_proba(entrada)[0]
+            prob_lr = lr.predict_proba(entrada)[0]
+            prob = prob_rf * 0.7 + prob_lr * 0.3
+        else:
+            prob = modelo.predict_proba(entrada)[0]
         return round(prob[1] * 100, 1), round(prob[0] * 100, 1)
     except:
         return 50.0, 50.0
