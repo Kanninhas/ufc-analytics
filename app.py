@@ -260,49 +260,31 @@ def render_fight(luta, evento_nome, expanded=False):
     else:
         prob_r, prob_b = 50.0, 50.0
     vencedor = luta["R_fighter"] if prob_r >= prob_b else luta["B_fighter"]
-    vencedor_lado = "R" if prob_r >= prob_b else "B"
-    conf, conf_cls = conf_label(max(prob_r, prob_b))
+    conf, _ = conf_label(max(prob_r, prob_b))
     titulo = luta.get("title_bout", False)
-
-    card_class = "fight-card-featured" if titulo else "fight-card"
-
-    title_html = '<div class="title-badge">Title fight</div>' if titulo else ""
-
-    pick_class = "pick-badge-r" if vencedor_lado == "R" else "pick-badge-b"
-
     r_wins = perfil_r["wins"] if perfil_r else 0
     r_losses = perfil_r["losses"] if perfil_r else 0
     b_wins = perfil_b["wins"] if perfil_b else 0
     b_losses = perfil_b["losses"] if perfil_b else 0
 
-    st.markdown(f"""
-    <div class="{card_class}">
-        {title_html}
-        <div style="display:grid;grid-template-columns:1fr 80px 1fr;align-items:center;gap:8px">
-            <div>
-                <div class="fighter-name-r">{luta["R_fighter"]}</div>
-                <div class="record-text">{r_wins}W · {r_losses}L</div>
-            </div>
-            <div style="text-align:center">
-                <div style="font-size:10px;color:#333;font-weight:700">VS</div>
-                <div class="{pick_class}" style="margin-top:4px">{vencedor.split()[0] if vencedor else ""}</div>
-            </div>
-            <div style="text-align:right">
-                <div class="fighter-name-b">{luta["B_fighter"]}</div>
-                <div class="record-text">{b_wins}W · {b_losses}L</div>
-            </div>
-        </div>
-        <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
-            <span style="font-size:12px;color:#E24B4A;font-weight:600;width:32px">{prob_r}%</span>
-            <div style="flex:1;height:4px;background:#1a1a1a;border-radius:2px;overflow:hidden;display:flex">
-                <div style="width:{prob_r}%;background:#E24B4A;height:100%"></div>
-                <div style="width:{prob_b}%;background:#378ADD;height:100%"></div>
-            </div>
-            <span style="font-size:12px;color:#378ADD;font-weight:600;width:32px;text-align:right">{prob_b}%</span>
-            <span class="{conf_cls}">{conf}</span>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    if titulo:
+        st.markdown("🏆 **Title fight**")
+
+    col1, col2, col3 = st.columns([3, 2, 3])
+    with col1:
+        st.markdown(f"**{luta['R_fighter']}**")
+        st.caption(f"{r_wins}W · {r_losses}L")
+    with col2:
+        st.markdown(f"<div style='text-align:center;color:#555;font-size:12px'>vs<br><b style='color:#fff'>{vencedor.split()[0]}</b><br><small>{conf}</small></div>", unsafe_allow_html=True)
+    with col3:
+        st.markdown(f"**{luta['B_fighter']}**")
+        st.caption(f"{b_wins}W · {b_losses}L")
+
+    col_p1, col_p2 = st.columns(2)
+    with col_p1:
+        st.progress(prob_r / 100, text=f"{luta['R_fighter'].split()[0]}: {prob_r}%")
+    with col_p2:
+        st.progress(prob_b / 100, text=f"{luta['B_fighter'].split()[0]}: {prob_b}%")
 
     col1, col2 = st.columns(2)
     with col1:
@@ -315,6 +297,7 @@ def render_fight(luta, evento_nome, expanded=False):
             st.session_state.lutador_selecionado = luta["B_fighter"]
             st.session_state.pagina = "perfil"
             st.rerun()
+    st.divider()
 
 def mostrar_perfil(nome):
     perfil = buscar_lutador(nome)
