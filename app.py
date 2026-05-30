@@ -25,31 +25,38 @@ def carregar_dados():
 df, modelo, features, lutadores = carregar_dados()
 
 @st.cache_data(ttl=3600)
-def buscar_card_espn():
-    try:
-        url = "https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard"
-        resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
-        data = resp.json()
-        lutas = []
-        for evento in data.get("events", []):
-            nome_evento = evento.get("name")
-            data_evento = evento.get("date", "")[:10]
-            for luta in evento.get("competitions", []):
-                competidores = luta.get("competitors", [])
-                if len(competidores) >= 2:
-                    r = competidores[0].get("athlete", {}).get("displayName", "N/A")
-                    b = competidores[1].get("athlete", {}).get("displayName", "N/A")
-                    titulo = luta.get("notes", [{}])[0].get("headline", "") if luta.get("notes") else ""
-                    lutas.append({
-                        "evento": nome_evento,
-                        "data": data_evento,
-                        "R_fighter": r,
-                        "B_fighter": b,
-                        "title_bout": "title" in titulo.lower() if titulo else False
-                    })
-        return pd.DataFrame(lutas)
-    except:
-        return pd.DataFrame()
+def buscar_proximos_eventos():
+    from datetime import datetime, timedelta
+    eventos = []
+    data_atual = datetime.now()
+    for i in range(8):
+        data = data_atual + timedelta(weeks=i)
+        date_str = data.strftime("%Y%m%d")
+        try:
+            url = f"https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard?dates={date_str}"
+            resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
+            if resp.status_code == 200:
+                data_json = resp.json()
+                for evento in data_json.get("events", []):
+                    nome = evento.get("name")
+                    data_evento = evento.get("date", "")[:10]
+                    if not any(e["nome"] == nome for e in eventos):
+                        lutas = []
+                        for luta in evento.get("competitions", []):
+                            competidores = luta.get("competitors", [])
+                            if len(competidores) >= 2:
+                                r = competidores[0].get("athlete", {}).get("displayName", "N/A")
+                                b = competidores[1].get("athlete", {}).get("displayName", "N/A")
+                                titulo = luta.get("notes", [{}])[0].get("headline", "") if luta.get("notes") else ""
+                                lutas.append({
+                                    "R_fighter": r,
+                                    "B_fighter": b,
+                                    "title_bout": "title" in titulo.lower() if titulo else False
+                                })
+                        eventos.append({"nome": nome, "data": data_evento, "lutas": lutas})
+        except:
+            continue
+    return eventos
 
 def safe_float(val, default=0.0):
     try:
