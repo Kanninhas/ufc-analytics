@@ -252,7 +252,7 @@ def conf_label(prob):
     else:
         return "Toss-up", "conf-low"
 
-def render_fight(luta, evento_nome, expanded=False):
+def render_fight(luta, evento_nome, idx=0):
     perfil_r = buscar_lutador(luta["R_fighter"])
     perfil_b = buscar_lutador(luta["B_fighter"])
     if perfil_r and perfil_b:
@@ -288,12 +288,12 @@ def render_fight(luta, evento_nome, expanded=False):
 
     col1, col2 = st.columns(2)
     with col1:
-        if st.button(f"Profile: {luta['R_fighter'].split()[0]}", key=f"pr_{evento_nome}_{luta['R_fighter']}"):
+        if st.button(f"Profile: {luta['R_fighter'].split()[0]}", key=f"pr_{evento_nome}_{idx}_{luta['R_fighter']}"):
             st.session_state.lutador_selecionado = luta["R_fighter"]
             st.session_state.pagina = "perfil"
             st.rerun()
     with col2:
-        if st.button(f"Profile: {luta['B_fighter'].split()[0]}", key=f"pb_{evento_nome}_{luta['B_fighter']}"):
+        if st.button(f"Profile: {luta['B_fighter'].split()[0]}", key=f"pb_{evento_nome}_{idx}_{luta['B_fighter']}"):
             st.session_state.lutador_selecionado = luta["B_fighter"]
             st.session_state.pagina = "perfil"
             st.rerun()
@@ -547,8 +547,8 @@ else:
                 except:
                     pass
                 with st.expander(f"**{evento['nome']}** — {data_fmt}", expanded=(eventos.index(evento) == 0)):
-                    for luta in evento["lutas"]:
-                        render_fight(luta, evento["nome"])
+                    for idx, luta in enumerate(evento["lutas"]):
+                        render_fight(luta, evento["nome"], idx)
 
     with tab2:
         st.markdown("### Fighter search")
