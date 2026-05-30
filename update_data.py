@@ -12,6 +12,10 @@ modelo = joblib.load("modelo_ufc_v3.pkl")
 features_v2 = joblib.load("features_v3.pkl")
 print(f"Dataset: {len(df)} fights")
 
+# Pre-index for fast lookup
+df["R_lower"] = df["R_fighter"].str.lower()
+df["B_lower"] = df["B_fighter"].str.lower()
+
 def safe_float(val, default=0.0):
     try:
         v = float(val)
@@ -21,10 +25,12 @@ def safe_float(val, default=0.0):
 
 def get_prediction(nome_r, nome_b):
     try:
-        lutas_r = df[df["R_fighter"].str.lower() == nome_r.lower()]
-        lutas_r2 = df[df["B_fighter"].str.lower() == nome_r.lower()]
-        lutas_b = df[df["B_fighter"].str.lower() == nome_b.lower()]
-        lutas_b2 = df[df["R_fighter"].str.lower() == nome_b.lower()]
+        nr = nome_r.lower()
+        nb = nome_b.lower()
+        lutas_r = df[df["R_lower"] == nr]
+        lutas_r2 = df[df["B_lower"] == nr]
+        lutas_b = df[df["B_lower"] == nb]
+        lutas_b2 = df[df["R_lower"] == nb]
         if len(lutas_r) > 0:
             sr = lutas_r.sort_values("date", ascending=False).iloc[0]
             pr = "R_"
