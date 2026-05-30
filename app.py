@@ -16,8 +16,8 @@ GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
 @st.cache_data
 def carregar_dados():
     df = pd.read_csv("ufc_master_clean.csv")
-    modelo = joblib.load("modelo_ufc_v2.pkl")
-    features = joblib.load("features.pkl")
+    modelo = joblib.load("modelo_ufc_v3.pkl")
+    features = joblib.load("features_v3.pkl")
     todos = pd.concat([df["R_fighter"], df["B_fighter"]]).unique()
     lutadores = sorted(set([l.strip() for l in todos if isinstance(l, str)]))
     return df, modelo, features, lutadores
