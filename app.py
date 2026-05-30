@@ -7,11 +7,56 @@ import requests
 import warnings
 from groq import Groq
 import os
+from datetime import datetime, timedelta
 warnings.filterwarnings("ignore")
 
-st.set_page_config(page_title="UFC Analytics", page_icon="🥊", layout="wide")
+st.set_page_config(
+    page_title="UFC Analytics",
+    page_icon="🥊",
+    layout="wide",
+    initial_sidebar_state="collapsed"
+)
 
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+# Dark theme CSS
+st.markdown("""
+<style>
+    .stApp { background-color: #0a0a0a; color: #ffffff; }
+    .stApp > header { background-color: #111111; }
+    section[data-testid="stSidebar"] { background-color: #111111; }
+    .stSelectbox > div > div { background-color: #1a1a1a; color: #fff; border: 1px solid #2a2a2a; }
+    .stTextInput > div > div > input { background-color: #1a1a1a; color: #fff; border: 1px solid #2a2a2a; }
+    .stButton > button { background-color: #E24B4A; color: white; border: none; border-radius: 8px; font-weight: 600; }
+    .stButton > button:hover { background-color: #c43a39; border: none; }
+    .stProgress > div > div { background-color: #1a1a1a; }
+    div[data-testid="metric-container"] { background-color: #111; border: 1px solid #1e1e1e; border-radius: 8px; padding: 12px; }
+    .stTabs [data-baseweb="tab-list"] { background-color: #111; border-bottom: 1px solid #222; }
+    .stTabs [data-baseweb="tab"] { color: #888; }
+    .stTabs [aria-selected="true"] { color: #fff; border-bottom: 2px solid #E24B4A; }
+    .stExpander { background-color: #111; border: 1px solid #1e1e1e; border-radius: 12px; }
+    .stDivider { border-color: #1e1e1e; }
+    h1, h2, h3 { color: #ffffff; }
+    p, label { color: #888; }
+    .fight-card { background: #111; border: 1px solid #1e1e1e; border-radius: 12px; padding: 16px; margin-bottom: 10px; }
+    .fight-card-featured { background: #111; border: 1px solid #E24B4A44; border-radius: 12px; padding: 16px; margin-bottom: 10px; }
+    .fighter-name-r { color: #E24B4A; font-weight: 600; font-size: 15px; }
+    .fighter-name-b { color: #378ADD; font-weight: 600; font-size: 15px; }
+    .record-text { color: #555; font-size: 12px; }
+    .pick-badge-r { background: #E24B4A22; color: #E24B4A; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .pick-badge-b { background: #378ADD22; color: #378ADD; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; }
+    .conf-high { background: #27500A22; color: #639922; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+    .conf-med { background: #63380622; color: #BA7517; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+    .conf-low { background: #1e1e1e; color: #555; padding: 2px 8px; border-radius: 4px; font-size: 11px; }
+    .title-badge { background: #E24B4A22; color: #E24B4A; padding: 2px 8px; border-radius: 4px; font-size: 11px; display: inline-block; margin-bottom: 8px; }
+    .stat-bar-r { background: #E24B4A; height: 4px; border-radius: 2px; }
+    .stat-bar-b { background: #378ADD; height: 4px; border-radius: 2px; }
+    .tag { background: #1a1a1a; color: #888; padding: 2px 8px; border-radius: 4px; font-size: 11px; border: 1px solid #2a2a2a; display: inline-block; margin: 2px; }
+    .section-title { font-size: 11px; font-weight: 600; color: #444; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px; }
+    .form-dot-w { display: inline-block; width: 20px; height: 20px; border-radius: 50%; background: #27500A44; color: #639922; font-size: 10px; font-weight: 700; text-align: center; line-height: 20px; margin: 1px; }
+    .form-dot-l { display: inline-block; width: 20px; height: 20px; border-radius: 50%; background: #7F1F1F44; color: #E24B4A; font-size: 10px; font-weight: 700; text-align: center; line-height: 20px; margin: 1px; }
+</style>
+""", unsafe_allow_html=True)
+
+GROQ_API_KEY = os.environ.get("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", "")
 
 @st.cache_data
 def carregar_dados():
@@ -24,13 +69,14 @@ def carregar_dados():
         modelo = modelo_obj
     todos = pd.concat([df["R_fighter"], df["B_fighter"]]).unique()
     lutadores = sorted(set([l.strip() for l in todos if isinstance(l, str)]))
+    df["R_lower"] = df["R_fighter"].str.lower()
+    df["B_lower"] = df["B_fighter"].str.lower()
     return df, modelo, features, lutadores
 
 df, modelo, features, lutadores = carregar_dados()
 
 @st.cache_data(ttl=3600)
 def buscar_proximos_eventos():
-    from datetime import datetime, timedelta
     eventos = []
     data_atual = datetime.now()
     for i in range(60):
@@ -40,8 +86,7 @@ def buscar_proximos_eventos():
             url = f"https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard?dates={date_str}"
             resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
             if resp.status_code == 200:
-                data_json = resp.json()
-                for evento in data_json.get("events", []):
+                for evento in resp.json().get("events", []):
                     nome = evento.get("name")
                     data_evento = evento.get("date", "")[:10]
                     if not any(e["nome"] == nome for e in eventos):
@@ -52,11 +97,7 @@ def buscar_proximos_eventos():
                                 r = competidores[0].get("athlete", {}).get("displayName", "N/A")
                                 b = competidores[1].get("athlete", {}).get("displayName", "N/A")
                                 titulo = luta.get("notes", [{}])[0].get("headline", "") if luta.get("notes") else ""
-                                lutas.append({
-                                    "R_fighter": r,
-                                    "B_fighter": b,
-                                    "title_bout": "title" in titulo.lower() if titulo else False
-                                })
+                                lutas.append({"R_fighter": r, "B_fighter": b, "title_bout": "title" in titulo.lower() if titulo else False})
                         eventos.append({"nome": nome, "data": data_evento, "lutas": lutas})
         except:
             continue
@@ -76,8 +117,8 @@ def safe_int(val, default=0):
         return default
 
 def buscar_lutador(nome):
-    lutas_r = df[df["R_fighter"].str.lower() == nome.lower()]
-    lutas_b = df[df["B_fighter"].str.lower() == nome.lower()]
+    lutas_r = df[df["R_lower"] == nome.lower()]
+    lutas_b = df[df["B_lower"] == nome.lower()]
     if len(lutas_r) > 0:
         stats = lutas_r.sort_values("date", ascending=False).iloc[0]
         p = "R_"
@@ -104,13 +145,13 @@ def buscar_lutador(nome):
         "alcance": f"{safe_float(stats[f'{p}Reach_cms']):.0f} cm" if safe_float(stats[f"{p}Reach_cms"]) > 0 else "N/A",
         "peso": f"{safe_float(stats[f'{p}Weight_lbs']):.0f} lbs" if safe_float(stats[f"{p}Weight_lbs"]) > 0 else "N/A",
         "stance": str(stats[f"{p}Stance"]) if pd.notna(stats[f"{p}Stance"]) else "N/A",
-        "idade": f"{safe_float(stats[f'{p}age']):.0f} anos" if safe_float(stats[f"{p}age"]) > 0 else "N/A",
+        "idade": f"{safe_float(stats[f'{p}age']):.0f}" if safe_float(stats[f"{p}age"]) > 0 else "N/A",
     }
 
 def ultimas_lutas(nome, n=3):
-    lutas_r = df[df["R_fighter"].str.lower() == nome.lower()].copy()
+    lutas_r = df[df["R_lower"] == nome.lower()].copy()
     lutas_r["lado"] = "R"
-    lutas_b = df[df["B_fighter"].str.lower() == nome.lower()].copy()
+    lutas_b = df[df["B_lower"] == nome.lower()].copy()
     lutas_b["lado"] = "B"
     todas = pd.concat([lutas_r, lutas_b])
     todas["data_dt"] = pd.to_datetime(todas["date"], errors="coerce")
@@ -121,102 +162,65 @@ def ultimas_lutas(nome, n=3):
         adversario = luta["B_fighter"] if lado == "R" else luta["R_fighter"]
         winner = str(luta["Winner"]).strip()
         if winner == "Red":
-            resultado = "Vitória" if lado == "R" else "Derrota"
+            resultado = "W" if lado == "R" else "L"
         elif winner == "Blue":
-            resultado = "Vitória" if lado == "B" else "Derrota"
+            resultado = "W" if lado == "B" else "L"
         else:
-            resultado = "Empate"
+            resultado = "D"
         lutas.append({
             "adversario": adversario,
             "data": luta["date"],
             "resultado": resultado,
             "metodo": str(luta["finish"]) if pd.notna(luta["finish"]) else "N/A",
             "round": luta["finish_round"],
-            "tempo": luta["finish_round_time"],
         })
     return lutas
 
 def resumo_performance(lutas):
     if not lutas:
-        return "Sem dados suficientes para análise de performance recente."
-    vitorias = [l for l in lutas if l["resultado"] == "Vitória"]
-    derrotas = [l for l in lutas if l["resultado"] == "Derrota"]
+        return "No recent data available."
+    nv = sum(1 for l in lutas if l["resultado"] == "W")
+    nd = sum(1 for l in lutas if l["resultado"] == "L")
     n = len(lutas)
-    nv = len(vitorias)
-    nd = len(derrotas)
     metodos = [l["metodo"] for l in lutas]
-    finalizacoes = sum(1 for m in metodos if "KO" in str(m) or "Submission" in str(m) or "TKO" in str(m))
-    decisoes = sum(1 for m in metodos if "Decision" in str(m))
+    fins = sum(1 for m in metodos if "KO" in str(m) or "Sub" in str(m) or "TKO" in str(m))
     if nv == n:
-        if finalizacoes == n:
-            return f"Lutador em chama — venceu todas as últimas {n} lutas por finalização. Perigoso em qualquer momento."
-        elif finalizacoes > decisoes:
-            return f"Excelente fase — {nv} vitórias nas últimas {n} lutas, maioria por finalização."
+        if fins == n:
+            return f"On fire — won all last {n} by finish. Dangerous at all times."
+        elif fins > n // 2:
+            return f"Strong form — {nv} wins in last {n}, mostly by finish."
         else:
-            return f"Dominante — {nv} vitórias nas últimas {n} lutas por decisão. Volume alto e resistência excepcional."
+            return f"Dominant — {nv} wins in last {n} fights by decision. High volume fighter."
     elif nv > nd:
-        if finalizacoes >= 1:
-            return f"Boa fase com {nv} vitória(s) nas últimas {n} lutas. Mostrou capacidade de finalizar."
-        else:
-            return f"Fase positiva com {nv} vitória(s) nas últimas {n} lutas. Consistente e confiante."
+        return f"Good form with {nv} win(s) in last {n} fights."
     elif nd == n:
-        return f"Momento crítico — {nd} derrotas consecutivas nas últimas {n} lutas. Precisa de reestruturação."
+        return f"Tough stretch — {nd} consecutive losses. Coming in under pressure."
     elif nd > nv:
-        return f"Fase difícil com {nd} derrota(s) nas últimas {n} lutas. Chega em desvantagem psicológica."
+        return f"Difficult run with {nd} loss(es) in last {n} fights."
     else:
-        return f"Fase irregular — resultados mistos nas últimas {n} lutas. Difícil de prever."
+        return f"Mixed results in last {n} fights. Unpredictable."
 
 def gerar_tags(perfil):
     tags = []
     total = perfil["ko_wins"] + perfil["sub_wins"] + perfil["dec_wins"]
     if total > 0:
         if perfil["ko_wins"] / total > 0.4:
-            tags.append("Poder de nocaute")
+            tags.append("KO power")
         if perfil["sub_wins"] / total > 0.3:
-            tags.append("Grappling de elite")
+            tags.append("Submission threat")
         if perfil["dec_wins"] / total > 0.5:
-            tags.append("Volume e resistência")
+            tags.append("Decision fighter")
     if perfil["sig_str_pct"] >= 60:
-        tags.append("Striking preciso")
+        tags.append("Sharp striker")
     if perfil["td_pct"] >= 50:
-        tags.append("Takedown eficiente")
+        tags.append("Takedown efficient")
     if perfil["win_streak"] >= 3:
-        tags.append("Forma ascendente")
+        tags.append("Hot streak")
     elif perfil["lose_streak"] >= 2:
-        tags.append("Momento delicado")
+        tags.append("Tough stretch")
     if perfil["title_bouts"] >= 3:
-        tags.append("Experiência no título")
+        tags.append("Championship experience")
     return tags
-
-def gerar_analise_ia(perfil, lutas, resumo):
-    ultimas = ""
-    for l in lutas:
-        ultimas += f"- {l['resultado']} vs {l['adversario']} ({l['data']}) via {l['metodo']} R{l['round']}\n"
-    prompt = f"""Você é um analista especialista em MMA e UFC.
-Com base nos dados abaixo, escreva uma análise curta (3-4 frases) sobre o momento atual do lutador.
-Foque especialmente na performance das últimas lutas. Use linguagem de analista esportivo.
-
-Lutador: {perfil['nome']}
-Cartel: {perfil['wins']}V {perfil['losses']}D
-Sequência atual: {perfil['win_streak']} vitórias / {perfil['lose_streak']} derrotas
-KO/Sub/Decisão: {perfil['ko_wins']}/{perfil['sub_wins']}/{perfil['dec_wins']}
-Precisão striking: {perfil['sig_str_pct']}%
-Resumo recente: {resumo}
-
-Últimas lutas:
-{ultimas}
-
-Escreva apenas a análise, sem títulos."""
-    try:
-        client = Groq(api_key=GROQ_API_KEY)
-        resposta = client.chat.completions.create(
-            model="llama-3.1-8b-instant",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=300
-        )
-        return resposta.choices[0].message.content
-    except:
-        return "Análise indisponível no momento."
 
 def prever_confronto(perfil_r, perfil_b):
     try:
@@ -229,257 +233,385 @@ def prever_confronto(perfil_r, perfil_b):
             perfil_r["sig_str_pct"] / 100, perfil_b["sig_str_pct"] / 100,
             perfil_r["td_pct"] / 100, perfil_b["td_pct"] / 100,
             perfil_r["sub_att"], perfil_b["sub_att"],
-            0, 0, 0, 0, 0, 0,
-            0, 0, 0, 0, 0, 0, 0, 0,
+            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
         ]], columns=features)
         if isinstance(modelo, tuple):
             rf, lr = modelo
-            prob_rf = rf.predict_proba(entrada)[0]
-            prob_lr = lr.predict_proba(entrada)[0]
-            prob = prob_rf * 0.7 + prob_lr * 0.3
+            prob = rf.predict_proba(entrada)[0] * 0.7 + lr.predict_proba(entrada)[0] * 0.3
         else:
             prob = modelo.predict_proba(entrada)[0]
         return round(prob[1] * 100, 1), round(prob[0] * 100, 1)
     except:
         return 50.0, 50.0
 
+def conf_label(prob):
+    if prob >= 70:
+        return "High", "conf-high"
+    elif prob >= 58:
+        return "Medium", "conf-med"
+    else:
+        return "Toss-up", "conf-low"
+
+def render_fight(luta, evento_nome, expanded=False):
+    perfil_r = buscar_lutador(luta["R_fighter"])
+    perfil_b = buscar_lutador(luta["B_fighter"])
+    if perfil_r and perfil_b:
+        prob_r, prob_b = prever_confronto(perfil_r, perfil_b)
+    else:
+        prob_r, prob_b = 50.0, 50.0
+    vencedor = luta["R_fighter"] if prob_r >= prob_b else luta["B_fighter"]
+    vencedor_lado = "R" if prob_r >= prob_b else "B"
+    conf, conf_cls = conf_label(max(prob_r, prob_b))
+    titulo = luta.get("title_bout", False)
+
+    card_class = "fight-card-featured" if titulo else "fight-card"
+
+    title_html = '<div class="title-badge">Title fight</div>' if titulo else ""
+
+    pick_class = "pick-badge-r" if vencedor_lado == "R" else "pick-badge-b"
+
+    r_wins = perfil_r["wins"] if perfil_r else 0
+    r_losses = perfil_r["losses"] if perfil_r else 0
+    b_wins = perfil_b["wins"] if perfil_b else 0
+    b_losses = perfil_b["losses"] if perfil_b else 0
+
+    st.markdown(f"""
+    <div class="{card_class}">
+        {title_html}
+        <div style="display:grid;grid-template-columns:1fr 80px 1fr;align-items:center;gap:8px">
+            <div>
+                <div class="fighter-name-r">{luta["R_fighter"]}</div>
+                <div class="record-text">{r_wins}W · {r_losses}L</div>
+            </div>
+            <div style="text-align:center">
+                <div style="font-size:10px;color:#333;font-weight:700">VS</div>
+                <div class="{pick_class}" style="margin-top:4px">{vencedor.split()[0] if vencedor else ""}</div>
+            </div>
+            <div style="text-align:right">
+                <div class="fighter-name-b">{luta["B_fighter"]}</div>
+                <div class="record-text">{b_wins}W · {b_losses}L</div>
+            </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:10px">
+            <span style="font-size:12px;color:#E24B4A;font-weight:600;width:32px">{prob_r}%</span>
+            <div style="flex:1;height:4px;background:#1a1a1a;border-radius:2px;overflow:hidden;display:flex">
+                <div style="width:{prob_r}%;background:#E24B4A;height:100%"></div>
+                <div style="width:{prob_b}%;background:#378ADD;height:100%"></div>
+            </div>
+            <span style="font-size:12px;color:#378ADD;font-weight:600;width:32px;text-align:right">{prob_b}%</span>
+            <span class="{conf_cls}">{conf}</span>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    col1, col2 = st.columns(2)
+    with col1:
+        if st.button(f"Profile: {luta['R_fighter'].split()[0]}", key=f"pr_{evento_nome}_{luta['R_fighter']}"):
+            st.session_state.lutador_selecionado = luta["R_fighter"]
+            st.session_state.pagina = "perfil"
+            st.rerun()
+    with col2:
+        if st.button(f"Profile: {luta['B_fighter'].split()[0]}", key=f"pb_{evento_nome}_{luta['B_fighter']}"):
+            st.session_state.lutador_selecionado = luta["B_fighter"]
+            st.session_state.pagina = "perfil"
+            st.rerun()
+
 def mostrar_perfil(nome):
     perfil = buscar_lutador(nome)
     if not perfil:
-        st.error("Lutador não encontrado.")
+        st.error("Fighter not found.")
         return
     lutas = ultimas_lutas(nome)
     tags = gerar_tags(perfil)
     resumo = resumo_performance(lutas)
 
-    if st.button("Voltar", key="back"):
+    if st.button("Back", key="back_perfil"):
         st.session_state.pagina = "home"
         st.rerun()
 
     iniciais = "".join([p[0] for p in nome.split()[:2]]).upper()
-    col_av, col_info = st.columns([1, 4])
+    col_av, col_info = st.columns([1, 5])
     with col_av:
-        st.markdown(f"""<div style="width:80px;height:80px;border-radius:50%;background:#FCEBEB;border:2px solid #E24B4A;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:500;color:#7F1F1F">{iniciais}</div>""", unsafe_allow_html=True)
+        st.markdown(f"""<div style="width:72px;height:72px;border-radius:50%;background:#E24B4A22;border:2px solid #E24B4A;display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:700;color:#E24B4A">{iniciais}</div>""", unsafe_allow_html=True)
     with col_info:
         st.markdown(f"## {perfil['nome']}")
-        st.markdown(f"{perfil['altura']} · {perfil['alcance']} alcance · {perfil['peso']} · {perfil['stance']} · {perfil['idade']}")
-        cols = st.columns(3)
-        cols[0].metric("Vitórias", perfil["wins"])
-        cols[1].metric("Derrotas", perfil["losses"])
-        cols[2].metric("Títulos disputados", perfil["title_bouts"])
+        st.markdown(f"<span style='color:#555;font-size:13px'>{perfil['altura']} · {perfil['alcance']} reach · {perfil['peso']} · {perfil['stance']} · {perfil['idade']} yrs</span>", unsafe_allow_html=True)
+        cols = st.columns(4)
+        cols[0].metric("Wins", perfil["wins"])
+        cols[1].metric("Losses", perfil["losses"])
+        cols[2].metric("Win streak", perfil["win_streak"])
+        cols[3].metric("Title bouts", perfil["title_bouts"])
+
     if tags:
-        st.markdown(" ".join([f"`{t}`" for t in tags]))
+        tags_html = " ".join([f'<span class="tag">{t}</span>' for t in tags])
+        st.markdown(tags_html, unsafe_allow_html=True)
 
     st.divider()
-    st.markdown("### Performance recente")
-    vitorias_recentes = sum(1 for l in lutas if l["resultado"] == "Vitória")
-    if vitorias_recentes == len(lutas):
+    st.markdown('<div class="section-title">Recent form</div>', unsafe_allow_html=True)
+
+    form_dots = ""
+    for l in lutas:
+        cls = "form-dot-w" if l["resultado"] == "W" else "form-dot-l"
+        form_dots += f'<span class="{cls}">{l["resultado"]}</span>'
+
+    nv = sum(1 for l in lutas if l["resultado"] == "W")
+    if nv == len(lutas):
         st.success(resumo)
-    elif vitorias_recentes == 0:
+    elif nv == 0:
         st.error(resumo)
     else:
         st.warning(resumo)
 
+    st.markdown(form_dots, unsafe_allow_html=True)
+
     col1, col2, col3 = st.columns(3)
     for i, luta in enumerate(lutas):
-        col = [col1, col2, col3][i]
-        cor = "🟢" if luta["resultado"] == "Vitória" else "🔴"
+        col = [col1, col2, col3][i] if i < 3 else col3
+        cor = "🟢" if luta["resultado"] == "W" else "🔴"
         with col:
             st.markdown(f"**{cor} vs {luta['adversario']}**")
             st.caption(f"{luta['metodo']} · R{luta['round']} · {luta['data'][:7]}")
 
     st.divider()
-    st.markdown("### Estatísticas técnicas")
+    st.markdown('<div class="section-title">Stats</div>', unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("KO/TKO", perfil["ko_wins"])
+    col2.metric("Submissions", perfil["sub_wins"])
+    col3.metric("Decisions", perfil["dec_wins"])
+
     col1, col2 = st.columns(2)
     with col1:
-        st.progress(min(perfil["sig_str_pct"] / 100, 1.0), text=f"Precisão striking: {perfil['sig_str_pct']}%")
-        st.progress(min(perfil["td_pct"] / 100, 1.0), text=f"Precisão takedown: {perfil['td_pct']}%")
+        st.markdown(f"<div style='color:#888;font-size:12px;margin-bottom:4px'>Striking accuracy</div>", unsafe_allow_html=True)
+        st.progress(min(perfil["sig_str_pct"] / 100, 1.0), text=f"{perfil['sig_str_pct']}%")
     with col2:
-        col_a, col_b, col_c = st.columns(3)
-        col_a.metric("KO/TKO", perfil["ko_wins"])
-        col_b.metric("Sub", perfil["sub_wins"])
-        col_c.metric("Dec", perfil["dec_wins"])
-        st.markdown(f"Sequência atual: {perfil['win_streak']} vitórias | Maior: {perfil['longest_win_streak']}")
+        st.markdown(f"<div style='color:#888;font-size:12px;margin-bottom:4px'>Takedown accuracy</div>", unsafe_allow_html=True)
+        st.progress(min(perfil["td_pct"] / 100, 1.0), text=f"{perfil['td_pct']}%")
 
     st.divider()
-    st.markdown("### Análise IA")
-    with st.spinner("Gerando análise..."):
-        analise = gerar_analise_ia(perfil, lutas, resumo)
-    st.info(analise)
-
-    st.divider()
-    st.markdown("### Analisar confronto")
-    adversario = st.selectbox("Escolha o adversário", options=["Selecione..."] + [l for l in lutadores if l.lower() != nome.lower()], key="adv_sel")
-    if st.button("Analisar", type="primary", key="analisar_btn"):
-        if adversario != "Selecione...":
+    st.markdown('<div class="section-title">Run a matchup</div>', unsafe_allow_html=True)
+    adversario = st.selectbox("Select opponent", options=["Choose..."] + [l for l in lutadores if l.lower() != nome.lower()], key="adv_sel")
+    if st.button("Predict fight", type="primary", key="predict_btn"):
+        if adversario != "Choose...":
             st.session_state.nome_r = nome
             st.session_state.nome_b = adversario
             st.session_state.pagina = "confronto"
             st.rerun()
 
+def mostrar_confronto(nome_r, nome_b):
+    perfil_r = buscar_lutador(nome_r)
+    perfil_b = buscar_lutador(nome_b)
+    if not perfil_r or not perfil_b:
+        st.error("Fighter not found.")
+        return
+
+    lutas_r = ultimas_lutas(nome_r)
+    lutas_b = ultimas_lutas(nome_b)
+    resumo_r = resumo_performance(lutas_r)
+    resumo_b = resumo_performance(lutas_b)
+    tags_r = gerar_tags(perfil_r)
+    tags_b = gerar_tags(perfil_b)
+    prob_r, prob_b = prever_confronto(perfil_r, perfil_b)
+    vencedor = perfil_r["nome"] if prob_r > prob_b else perfil_b["nome"]
+    conf, conf_cls = conf_label(max(prob_r, prob_b))
+
+    if st.button("Back", key="back_conf"):
+        st.session_state.pagina = "home"
+        st.rerun()
+
+    st.markdown(f"## {perfil_r['nome']} vs {perfil_b['nome']}")
+    st.divider()
+
+    col_r, col_b = st.columns(2)
+    with col_r:
+        st.markdown(f'<div class="fighter-name-r" style="font-size:18px">{perfil_r["nome"]}</div>', unsafe_allow_html=True)
+        st.markdown(f'<span style="color:#555;font-size:12px">{perfil_r["wins"]}W · {perfil_r["losses"]}L · {perfil_r["stance"]} · {perfil_r["altura"]}</span>', unsafe_allow_html=True)
+        if tags_r:
+            st.markdown(" ".join([f'<span class="tag">{t}</span>' for t in tags_r]), unsafe_allow_html=True)
+
+        nv_r = sum(1 for l in lutas_r if l["resultado"] == "W")
+        if nv_r == len(lutas_r):
+            st.success(resumo_r)
+        elif nv_r == 0:
+            st.error(resumo_r)
+        else:
+            st.warning(resumo_r)
+
+        form_r = "".join([f'<span class="form-dot-w">W</span>' if l["resultado"]=="W" else f'<span class="form-dot-l">L</span>' for l in lutas_r])
+        st.markdown(form_r, unsafe_allow_html=True)
+
+        st.markdown("**Last fights**")
+        for l in lutas_r:
+            cor = "🟢" if l["resultado"] == "W" else "🔴"
+            st.markdown(f"{cor} vs {l['adversario']} — {l['metodo']} R{l['round']}")
+
+        st.markdown("**Stats**")
+        st.progress(min(perfil_r["sig_str_pct"]/100, 1.0), text=f"Striking: {perfil_r['sig_str_pct']}%")
+        st.progress(min(perfil_r["td_pct"]/100, 1.0), text=f"Takedown: {perfil_r['td_pct']}%")
+        cols = st.columns(3)
+        cols[0].metric("KO", perfil_r["ko_wins"])
+        cols[1].metric("Sub", perfil_r["sub_wins"])
+        cols[2].metric("Dec", perfil_r["dec_wins"])
+
+        if st.button(f"Full profile", key="full_r"):
+            st.session_state.lutador_selecionado = nome_r
+            st.session_state.pagina = "perfil"
+            st.rerun()
+
+    with col_b:
+        st.markdown(f'<div class="fighter-name-b" style="font-size:18px">{perfil_b["nome"]}</div>', unsafe_allow_html=True)
+        st.markdown(f'<span style="color:#555;font-size:12px">{perfil_b["wins"]}W · {perfil_b["losses"]}L · {perfil_b["stance"]} · {perfil_b["altura"]}</span>', unsafe_allow_html=True)
+        if tags_b:
+            st.markdown(" ".join([f'<span class="tag">{t}</span>' for t in tags_b]), unsafe_allow_html=True)
+
+        nv_b = sum(1 for l in lutas_b if l["resultado"] == "W")
+        if nv_b == len(lutas_b):
+            st.success(resumo_b)
+        elif nv_b == 0:
+            st.error(resumo_b)
+        else:
+            st.warning(resumo_b)
+
+        form_b = "".join([f'<span class="form-dot-w">W</span>' if l["resultado"]=="W" else f'<span class="form-dot-l">L</span>' for l in lutas_b])
+        st.markdown(form_b, unsafe_allow_html=True)
+
+        st.markdown("**Last fights**")
+        for l in lutas_b:
+            cor = "🟢" if l["resultado"] == "W" else "🔴"
+            st.markdown(f"{cor} vs {l['adversario']} — {l['metodo']} R{l['round']}")
+
+        st.markdown("**Stats**")
+        st.progress(min(perfil_b["sig_str_pct"]/100, 1.0), text=f"Striking: {perfil_b['sig_str_pct']}%")
+        st.progress(min(perfil_b["td_pct"]/100, 1.0), text=f"Takedown: {perfil_b['td_pct']}%")
+        cols = st.columns(3)
+        cols[0].metric("KO", perfil_b["ko_wins"])
+        cols[1].metric("Sub", perfil_b["sub_wins"])
+        cols[2].metric("Dec", perfil_b["dec_wins"])
+
+        if st.button(f"Full profile", key="full_b"):
+            st.session_state.lutador_selecionado = nome_b
+            st.session_state.pagina = "perfil"
+            st.rerun()
+
+    st.divider()
+    st.markdown("### Prediction")
+
+    st.markdown(f"""
+    <div style="background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:20px;text-align:center">
+        <div style="display:flex;align-items:center;gap:12px;margin-bottom:12px">
+            <span style="font-size:16px;font-weight:700;color:#E24B4A;width:80px;text-align:right">{prob_r}%</span>
+            <div style="flex:1;height:8px;background:#1a1a1a;border-radius:4px;overflow:hidden;display:flex">
+                <div style="width:{prob_r}%;background:#E24B4A;height:100%"></div>
+                <div style="width:{prob_b}%;background:#378ADD;height:100%"></div>
+            </div>
+            <span style="font-size:16px;font-weight:700;color:#378ADD;width:80px">{prob_b}%</span>
+        </div>
+        <div style="font-size:13px;color:#555;margin-bottom:8px">Predicted winner</div>
+        <div style="font-size:22px;font-weight:700;color:#fff">{vencedor}</div>
+        <span class="{conf_cls}" style="margin-top:8px;display:inline-block">{conf} confidence</span>
+    </div>
+    """, unsafe_allow_html=True)
+
+# Session state
 if "pagina" not in st.session_state:
     st.session_state.pagina = "home"
 if "lutador_selecionado" not in st.session_state:
     st.session_state.lutador_selecionado = None
 
-st.markdown("## UFC Analytics")
-st.markdown("Previsão de lutas com inteligência artificial")
-st.divider()
+# Header
+st.markdown("""
+<div style="background:#111;border-bottom:1px solid #1e1e1e;padding:14px 0;margin-bottom:0">
+    <span style="font-size:20px;font-weight:700;color:#fff">UFC<span style="color:#E24B4A">analytics</span></span>
+    <span style="color:#555;font-size:13px;margin-left:16px">Fight predictions · 65.8% accuracy</span>
+</div>
+""", unsafe_allow_html=True)
 
+# Pages
 if st.session_state.pagina == "perfil" and st.session_state.lutador_selecionado:
     mostrar_perfil(st.session_state.lutador_selecionado)
 
 elif st.session_state.pagina == "confronto":
-    nome_r = st.session_state.get("nome_r", "")
-    nome_b = st.session_state.get("nome_b", "")
-    perfil_r = buscar_lutador(nome_r)
-    perfil_b = buscar_lutador(nome_b)
-    if perfil_r and perfil_b:
-        lutas_r = ultimas_lutas(nome_r)
-        lutas_b = ultimas_lutas(nome_b)
-        resumo_r = resumo_performance(lutas_r)
-        resumo_b = resumo_performance(lutas_b)
-        prob_r, prob_b = prever_confronto(perfil_r, perfil_b)
-        vencedor = perfil_r["nome"] if prob_r > prob_b else perfil_b["nome"]
-
-        if st.button("Voltar", key="back_conf"):
-            st.session_state.pagina = "home"
-            st.rerun()
-
-        col_r, col_b = st.columns(2)
-        with col_r:
-            st.markdown(f"### {perfil_r['nome']}")
-            vr = sum(1 for l in lutas_r if l["resultado"] == "Vitória")
-            if vr == len(lutas_r):
-                st.success(resumo_r)
-            elif vr == 0:
-                st.error(resumo_r)
-            else:
-                st.warning(resumo_r)
-            st.markdown(f"**{perfil_r['wins']}V · {perfil_r['losses']}D** | {perfil_r['stance']} | {perfil_r['idade']}")
-            st.markdown(f"Altura: {perfil_r['altura']} | Alcance: {perfil_r['alcance']}")
-            st.progress(min(perfil_r["sig_str_pct"] / 100, 1.0), text=f"Striking: {perfil_r['sig_str_pct']}%")
-            st.progress(min(perfil_r["td_pct"] / 100, 1.0), text=f"Takedown: {perfil_r['td_pct']}%")
-            st.markdown("**Últimas lutas**")
-            for l in lutas_r:
-                cor = "🟢" if l["resultado"] == "Vitória" else "🔴"
-                st.markdown(f"{cor} vs {l['adversario']} — {l['metodo']} R{l['round']}")
-            if st.button(f"Ver perfil completo", key="perfil_r"):
-                st.session_state.lutador_selecionado = nome_r
-                st.session_state.pagina = "perfil"
-                st.rerun()
-
-        with col_b:
-            st.markdown(f"### {perfil_b['nome']}")
-            vb = sum(1 for l in lutas_b if l["resultado"] == "Vitória")
-            if vb == len(lutas_b):
-                st.success(resumo_b)
-            elif vb == 0:
-                st.error(resumo_b)
-            else:
-                st.warning(resumo_b)
-            st.markdown(f"**{perfil_b['wins']}V · {perfil_b['losses']}D** | {perfil_b['stance']} | {perfil_b['idade']}")
-            st.markdown(f"Altura: {perfil_b['altura']} | Alcance: {perfil_b['alcance']}")
-            st.progress(min(perfil_b["sig_str_pct"] / 100, 1.0), text=f"Striking: {perfil_b['sig_str_pct']}%")
-            st.progress(min(perfil_b["td_pct"] / 100, 1.0), text=f"Takedown: {perfil_b['td_pct']}%")
-            st.markdown("**Últimas lutas**")
-            for l in lutas_b:
-                cor = "🟢" if l["resultado"] == "Vitória" else "🔴"
-                st.markdown(f"{cor} vs {l['adversario']} — {l['metodo']} R{l['round']}")
-            if st.button(f"Ver perfil completo", key="perfil_b"):
-                st.session_state.lutador_selecionado = nome_b
-                st.session_state.pagina = "perfil"
-                st.rerun()
-
-        st.divider()
-        st.markdown("### Previsão do modelo")
-        col1, col2, col3 = st.columns([2, 1, 2])
-        with col1:
-            st.metric(perfil_r["nome"], f"{prob_r}%")
-        with col2:
-            st.markdown("<div style='text-align:center;padding-top:20px'>vs</div>", unsafe_allow_html=True)
-        with col3:
-            st.metric(perfil_b["nome"], f"{prob_b}%")
-        st.success(f"Vencedor previsto: {vencedor}")
+    mostrar_confronto(
+        st.session_state.get("nome_r", ""),
+        st.session_state.get("nome_b", "")
+    )
 
 else:
-    aba1, aba2, aba3 = st.tabs(["Analisar confronto", "Perfil do lutador", "Próximo evento"])
+    tab1, tab2, tab3 = st.tabs(["Events", "Fighters", "Matchup"])
 
-    with aba1:
+    with tab1:
+        col1, col2, col3 = st.columns(3)
+        col1.metric("Model accuracy", "65.8%")
+        col2.metric("Fights in dataset", "7,177")
+        col3.metric("Upcoming events", "6")
+
+        st.divider()
+
+        if st.button("Refresh", key="refresh_events"):
+            st.cache_data.clear()
+            st.rerun()
+
+        with st.spinner("Loading events..."):
+            eventos = buscar_proximos_eventos()
+
+        if not eventos:
+            st.error("Could not load events.")
+        else:
+            for evento in eventos:
+                data_fmt = evento["data"]
+                try:
+                    data_fmt = datetime.strptime(evento["data"], "%Y-%m-%d").strftime("%b %d, %Y")
+                except:
+                    pass
+                with st.expander(f"**{evento['nome']}** — {data_fmt}", expanded=(eventos.index(evento) == 0)):
+                    for luta in evento["lutas"]:
+                        render_fight(luta, evento["nome"])
+
+    with tab2:
+        st.markdown("### Fighter search")
+        busca = st.text_input("Type a fighter name...", placeholder="e.g. Jon Jones, Islam Makhachev")
+        if busca and len(busca) >= 2:
+            resultados = [l for l in lutadores if busca.lower() in l.lower()][:20]
+            if resultados:
+                st.markdown(f"*{len(resultados)} fighters found*")
+                cols = st.columns(2)
+                for i, nome in enumerate(resultados):
+                    perfil = buscar_lutador(nome)
+                    with cols[i % 2]:
+                        if perfil:
+                            tags = gerar_tags(perfil)
+                            tags_html = " ".join([f'<span class="tag">{t}</span>' for t in tags[:2]])
+                            st.markdown(f"""
+                            <div class="fight-card" style="margin-bottom:8px">
+                                <div style="font-size:14px;font-weight:600;color:#fff">{perfil["nome"]}</div>
+                                <div style="color:#555;font-size:12px">{perfil["wins"]}W · {perfil["losses"]}L · {perfil["stance"]}</div>
+                                <div style="margin-top:6px">{tags_html}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                            if st.button("View profile", key=f"search_{nome}"):
+                                st.session_state.lutador_selecionado = nome
+                                st.session_state.pagina = "perfil"
+                                st.rerun()
+            else:
+                st.warning("No fighters found.")
+        else:
+            st.markdown('<div style="color:#555;font-size:13px">Start typing to search 2,249 fighters</div>', unsafe_allow_html=True)
+
+    with tab3:
+        st.markdown("### Fight matchup")
         col1, col2 = st.columns(2)
         with col1:
-            nome_r = st.selectbox("Canto Vermelho", options=["Selecione..."] + lutadores, index=0, key="sel_r")
+            nome_r = st.selectbox("Red corner", options=["Choose..."] + lutadores, index=0, key="sel_r")
         with col2:
-            nome_b = st.selectbox("Canto Azul", options=["Selecione..."] + lutadores, index=0, key="sel_b")
-        if st.button("Analisar confronto", type="primary"):
-            if nome_r == "Selecione..." or nome_b == "Selecione...":
-                st.warning("Selecione os dois lutadores.")
+            nome_b = st.selectbox("Blue corner", options=["Choose..."] + lutadores, index=0, key="sel_b")
+
+        if st.button("Predict fight", type="primary"):
+            if nome_r == "Choose..." or nome_b == "Choose...":
+                st.warning("Select both fighters.")
             elif nome_r == nome_b:
-                st.warning("Selecione lutadores diferentes.")
+                st.warning("Select different fighters.")
             else:
                 st.session_state.nome_r = nome_r
                 st.session_state.nome_b = nome_b
                 st.session_state.pagina = "confronto"
                 st.rerun()
-
-    with aba2:
-        st.markdown("Busque um lutador para ver o perfil completo com performance recente.")
-        nome_busca = st.selectbox("Buscar lutador", options=["Selecione..."] + lutadores, key="busca_perfil")
-        if st.button("Ver perfil", type="primary"):
-            if nome_busca != "Selecione...":
-                st.session_state.lutador_selecionado = nome_busca
-                st.session_state.pagina = "perfil"
-                st.rerun()
-
-    with aba3:
-        st.markdown("### Card do próximo evento — ao vivo via ESPN")
-        if st.button("Atualizar card"):
-            st.cache_data.clear()
-            st.rerun()
-        with st.spinner("Buscando card..."):
-            eventos = buscar_proximos_eventos()
-        if not eventos:
-            st.error("Não foi possível buscar os eventos.")
-        else:
-            for evento in eventos:
-                with st.expander(f"**{evento['nome']}** | {evento['data']}", expanded=(eventos.index(evento) == 0)):
-                    for luta in evento["lutas"]:
-                        perfil_r = buscar_lutador(luta["R_fighter"])
-                        perfil_b = buscar_lutador(luta["B_fighter"])
-                        if perfil_r and perfil_b:
-                            prob_r, prob_b = prever_confronto(perfil_r, perfil_b)
-                        else:
-                            prob_r, prob_b = 50.0, 50.0
-                        vencedor = luta["R_fighter"] if prob_r >= prob_b else luta["B_fighter"]
-                        titulo = " 🏆" if luta.get("title_bout", False) else ""
-                        col1, col2, col3 = st.columns([3, 2, 3])
-                        with col1:
-                            st.markdown(f"**{luta['R_fighter']}**")
-                            if perfil_r:
-                                st.caption(f"{perfil_r['wins']}V · {perfil_r['losses']}D")
-                            if st.button("Ver perfil", key=f"pr_{evento['nome']}_{luta['R_fighter']}"):
-                                st.session_state.lutador_selecionado = luta["R_fighter"]
-                                st.session_state.pagina = "perfil"
-                                st.rerun()
-                        with col2:
-                            st.markdown(f"<div style='text-align:center'><b>vs</b>{titulo}<br><small>{vencedor}</small></div>", unsafe_allow_html=True)
-                        with col3:
-                            st.markdown(f"**{luta['B_fighter']}**")
-                            if perfil_b:
-                                st.caption(f"{perfil_b['wins']}V · {perfil_b['losses']}D")
-                            if st.button("Ver perfil", key=f"pb_{evento['nome']}_{luta['B_fighter']}"):
-                                st.session_state.lutador_selecionado = luta["B_fighter"]
-                                st.session_state.pagina = "perfil"
-                                st.rerun()
-                        col_b1, col_b2 = st.columns(2)
-                        with col_b1:
-                            st.progress(prob_r / 100, text=f"{prob_r}%")
-                        with col_b2:
-                            st.progress(prob_b / 100, text=f"{prob_b}%")
-                        st.divider()
-                col_b1, col_b2 = st.columns(2)
-                with col_b1:
-                    st.progress(prob_r / 100, text=f"{prob_r}%")
-                with col_b2:
-                    st.progress(prob_b / 100, text=f"{prob_b}%")
-                st.divider()
