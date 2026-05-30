@@ -238,12 +238,6 @@ def prever_confronto(perfil_r, perfil_b):
             prob_lr = lr.predict_proba(entrada)[0]
             prob = prob_rf * 0.7 + prob_lr * 0.3
         else:
-            if isinstance(modelo, tuple):
-            rf, lr = modelo
-            prob_rf = rf.predict_proba(entrada)[0]
-            prob_lr = lr.predict_proba(entrada)[0]
-            prob = prob_rf * 0.7 + prob_lr * 0.3
-        else:
             prob = modelo.predict_proba(entrada)[0]
         return round(prob[1] * 100, 1), round(prob[0] * 100, 1)
     except:
