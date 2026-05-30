@@ -33,8 +33,8 @@ def buscar_proximos_eventos():
     from datetime import datetime, timedelta
     eventos = []
     data_atual = datetime.now()
-    for i in range(8):
-        data = data_atual + timedelta(weeks=i)
+    for i in range(60):
+        data = data_atual + timedelta(days=i)
         date_str = data.strftime("%Y%m%d")
         try:
             url = f"https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard?dates={date_str}"
