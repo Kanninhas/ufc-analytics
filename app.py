@@ -438,39 +438,45 @@ else:
             st.rerun()
         with st.spinner("Buscando card..."):
             eventos = buscar_proximos_eventos()
-        if df_card is None or len(df_card) == 0:
-            st.error("Não foi possível buscar o card.")
+        if not eventos:
+            st.error("Não foi possível buscar os eventos.")
         else:
-            st.markdown(f"**{df_card['evento'].iloc[0]}** | {df_card['data'].iloc[0]}")
-            st.divider()
-            for _, luta in df_card.iterrows():
-                perfil_r = buscar_lutador(luta["R_fighter"])
-                perfil_b = buscar_lutador(luta["B_fighter"])
-                if perfil_r and perfil_b:
-                    prob_r, prob_b = prever_confronto(perfil_r, perfil_b)
-                else:
-                    prob_r, prob_b = 50.0, 50.0
-                vencedor = luta["R_fighter"] if prob_r >= prob_b else luta["B_fighter"]
-                titulo = " 🏆" if luta.get("title_bout", False) else ""
-                col1, col2, col3 = st.columns([3, 2, 3])
-                with col1:
-                    st.markdown(f"**{luta['R_fighter']}**")
-                    if perfil_r:
-                        st.caption(f"{perfil_r['wins']}V · {perfil_r['losses']}D")
-                    if st.button("Ver perfil", key=f"pr_{luta['R_fighter']}"):
-                        st.session_state.lutador_selecionado = luta["R_fighter"]
-                        st.session_state.pagina = "perfil"
-                        st.rerun()
-                with col2:
-                    st.markdown(f"<div style='text-align:center'><b>vs</b>{titulo}<br><small>{vencedor}</small></div>", unsafe_allow_html=True)
-                with col3:
-                    st.markdown(f"**{luta['B_fighter']}**")
-                    if perfil_b:
-                        st.caption(f"{perfil_b['wins']}V · {perfil_b['losses']}D")
-                    if st.button("Ver perfil", key=f"pb_{luta['B_fighter']}"):
-                        st.session_state.lutador_selecionado = luta["B_fighter"]
-                        st.session_state.pagina = "perfil"
-                        st.rerun()
+            for evento in eventos:
+                with st.expander(f"**{evento['nome']}** | {evento['data']}", expanded=(eventos.index(evento) == 0)):
+                    for luta in evento["lutas"]:
+                        perfil_r = buscar_lutador(luta["R_fighter"])
+                        perfil_b = buscar_lutador(luta["B_fighter"])
+                        if perfil_r and perfil_b:
+                            prob_r, prob_b = prever_confronto(perfil_r, perfil_b)
+                        else:
+                            prob_r, prob_b = 50.0, 50.0
+                        vencedor = luta["R_fighter"] if prob_r >= prob_b else luta["B_fighter"]
+                        titulo = " 🏆" if luta.get("title_bout", False) else ""
+                        col1, col2, col3 = st.columns([3, 2, 3])
+                        with col1:
+                            st.markdown(f"**{luta['R_fighter']}**")
+                            if perfil_r:
+                                st.caption(f"{perfil_r['wins']}V · {perfil_r['losses']}D")
+                            if st.button("Ver perfil", key=f"pr_{evento['nome']}_{luta['R_fighter']}"):
+                                st.session_state.lutador_selecionado = luta["R_fighter"]
+                                st.session_state.pagina = "perfil"
+                                st.rerun()
+                        with col2:
+                            st.markdown(f"<div style='text-align:center'><b>vs</b>{titulo}<br><small>{vencedor}</small></div>", unsafe_allow_html=True)
+                        with col3:
+                            st.markdown(f"**{luta['B_fighter']}**")
+                            if perfil_b:
+                                st.caption(f"{perfil_b['wins']}V · {perfil_b['losses']}D")
+                            if st.button("Ver perfil", key=f"pb_{evento['nome']}_{luta['B_fighter']}"):
+                                st.session_state.lutador_selecionado = luta["B_fighter"]
+                                st.session_state.pagina = "perfil"
+                                st.rerun()
+                        col_b1, col_b2 = st.columns(2)
+                        with col_b1:
+                            st.progress(prob_r / 100, text=f"{prob_r}%")
+                        with col_b2:
+                            st.progress(prob_b / 100, text=f"{prob_b}%")
+                        st.divider()
                 col_b1, col_b2 = st.columns(2)
                 with col_b1:
                     st.progress(prob_r / 100, text=f"{prob_r}%")
