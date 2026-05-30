@@ -18,12 +18,10 @@ def carregar_dados():
     df = pd.read_csv("ufc_master_clean.csv")
     modelo_obj = joblib.load("modelo_ufc_v3.pkl")
     features = joblib.load("features_v3.pkl")
-    # Handle ensemble (tuple) or single model
     if isinstance(modelo_obj, tuple):
-        modelo = modelo_obj  # (rf, lr) ensemble
+        modelo = modelo_obj
     else:
         modelo = modelo_obj
-    return df, modelo, features, lutadores
     todos = pd.concat([df["R_fighter"], df["B_fighter"]]).unique()
     lutadores = sorted(set([l.strip() for l in todos if isinstance(l, str)]))
     return df, modelo, features, lutadores
