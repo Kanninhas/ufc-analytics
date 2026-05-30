@@ -437,7 +437,7 @@ else:
             st.cache_data.clear()
             st.rerun()
         with st.spinner("Buscando card..."):
-            df_card = buscar_card_espn()
+            eventos = buscar_proximos_eventos()
         if df_card is None or len(df_card) == 0:
             st.error("Não foi possível buscar o card.")
         else:
