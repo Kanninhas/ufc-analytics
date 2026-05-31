@@ -561,9 +561,11 @@ else:
 
     with tab1:
         col1, col2, col3 = st.columns(3)
+        with st.spinner("Loading events..."):
+            eventos_count = buscar_proximos_eventos()
         col1.metric("Model accuracy", "65.8%")
-        col2.metric("Fights in dataset", "7,177")
-        col3.metric("Upcoming events", "6")
+        col2.metric("Fights in dataset", f"{len(df):,}")
+        col3.metric("Upcoming events", len(eventos_count))
 
         st.divider()
 
@@ -571,8 +573,7 @@ else:
             st.cache_data.clear()
             st.rerun()
 
-        with st.spinner("Loading events..."):
-            eventos = buscar_proximos_eventos()
+        eventos = eventos_count
 
         if not eventos:
             st.error("Could not load events.")
