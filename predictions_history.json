@@ -1,0 +1,70 @@
+[
+  {
+    "event": "UFC Fight Night: Muhammad vs. Bonfim",
+    "date": "2026-06-06",
+    "sherdog_url": "https://www.sherdog.com/events/UFC-Fight-Night-278-Muhammad-vs-Bonfim-112060",
+    "predictions": [
+      {
+        "R": "Belal Muhammad",
+        "B": "Gabriel Bonfim",
+        "predicted": "Gabriel Bonfim"
+      },
+      {
+        "R": "Brendan Allen",
+        "B": "Edmen Shahbazyan",
+        "predicted": "Edmen Shahbazyan"
+      },
+      {
+        "R": "Fares Ziam",
+        "B": "Tom Nolan",
+        "predicted": "Fares Ziam"
+      },
+      {
+        "R": "Bryce Mitchell",
+        "B": "Santiago Luna",
+        "predicted": "Bryce Mitchell"
+      },
+      {
+        "R": "Matt Schnell",
+        "B": "Alessandro Costa",
+        "predicted": "Alessandro Costa"
+      },
+      {
+        "R": "Iwo Baraniewski",
+        "B": "Junior Tafa",
+        "predicted": "Iwo Baraniewski"
+      },
+      {
+        "R": "Marcus Mc Ghee",
+        "B": "John Yannis",
+        "predicted": "Marcus Mc Ghee"
+      },
+      {
+        "R": "Bruno Silva",
+        "B": "Edgar Chairez",
+        "predicted": "Edgar Chairez"
+      },
+      {
+        "R": "Priscila Cachoeira",
+        "B": "Chelsea Chandler",
+        "predicted": "Chelsea Chandler"
+      },
+      {
+        "R": "Jordan Leavitt",
+        "B": "Joanderson Brito",
+        "predicted": "Joanderson Brito"
+      },
+      {
+        "R": "Jeisla Chaves",
+        "B": "Yuneisy Duben",
+        "predicted": "Jeisla Chaves"
+      },
+      {
+        "R": "Ketlen Souza",
+        "B": "Ariane Carnelossi",
+        "predicted": "Ketlen Souza"
+      }
+    ],
+    "locked": true
+  }
+]
