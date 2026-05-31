@@ -1,3 +1,4 @@
+# UFC Analytics v2.1 - Sherdog events
 
 import streamlit as st
 import pandas as pd
@@ -7,7 +8,9 @@ import requests
 import warnings
 from groq import Groq
 import os
+import re
 from datetime import datetime, timedelta
+from bs4 import BeautifulSoup
 warnings.filterwarnings("ignore")
 
 st.set_page_config(
@@ -75,33 +78,67 @@ def carregar_dados():
 
 df, modelo, features, lutadores = carregar_dados()
 
+def fix_name(name):
+    import re
+    return re.sub(r'([a-z])([A-Z])', r'\1 \2', name)
+
+def buscar_card_sherdog(event_url):
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+    try:
+        resp = requests.get(event_url, headers=headers, timeout=10)
+        soup = BeautifulSoup(resp.text, "html.parser")
+        tabela = soup.find("table", class_="new_table upcoming")
+        if not tabela:
+            return []
+        lutas = []
+        for linha in tabela.find_all("tr")[1:]:
+            cols = linha.find_all("td")
+            fighter_cells = []
+            for col in cols:
+                lnk = col.find("a")
+                if lnk and lnk.text.strip():
+                    fighter_cells.append({
+                        "name": fix_name(lnk.text.strip()),
+                        "href": f"https://www.sherdog.com{lnk.get('href', '')}"
+                    })
+            if len(fighter_cells) >= 2:
+                lutas.append({
+                    "R_fighter": fighter_cells[0]["name"],
+                    "B_fighter": fighter_cells[1]["name"],
+                    "R_link": fighter_cells[0]["href"],
+                    "B_link": fighter_cells[1]["href"],
+                    "title_bout": False
+                })
+        return lutas
+    except:
+        return []
+
 @st.cache_data(ttl=3600)
 def buscar_proximos_eventos():
-    eventos = []
-    data_atual = datetime.now()
-    for i in range(60):
-        data = data_atual + timedelta(days=i)
-        date_str = data.strftime("%Y%m%d")
-        try:
-            url = f"https://site.api.espn.com/apis/site/v2/sports/mma/ufc/scoreboard?dates={date_str}"
-            resp = requests.get(url, headers={"User-Agent": "Mozilla/5.0"}, timeout=10)
-            if resp.status_code == 200:
-                for evento in resp.json().get("events", []):
-                    nome = evento.get("name")
-                    data_evento = evento.get("date", "")[:10]
-                    if not any(e["nome"] == nome for e in eventos):
-                        lutas = []
-                        for luta in evento.get("competitions", []):
-                            competidores = luta.get("competitors", [])
-                            if len(competidores) >= 2:
-                                r = competidores[0].get("athlete", {}).get("displayName", "N/A")
-                                b = competidores[1].get("athlete", {}).get("displayName", "N/A")
-                                titulo = luta.get("notes", [{}])[0].get("headline", "") if luta.get("notes") else ""
-                                lutas.append({"R_fighter": r, "B_fighter": b, "title_bout": "title" in titulo.lower() if titulo else False})
-                        eventos.append({"nome": nome, "data": data_evento, "lutas": lutas})
-        except:
-            continue
-    return eventos
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+    try:
+        url = "https://www.sherdog.com/organizations/Ultimate-Fighting-Championship-UFC-2"
+        resp = requests.get(url, headers=headers, timeout=15)
+        soup = BeautifulSoup(resp.text, "html.parser")
+        tabela = soup.find("table", class_="new_table event")
+        if not tabela:
+            return []
+        eventos = []
+        for linha in tabela.find_all("tr")[1:]:
+            cols = linha.find_all("td")
+            link = linha.find("a")
+            if link and cols:
+                nome = link.text.strip()
+                href = f"https://www.sherdog.com{link.get('href', '')}"
+                data = cols[1].text.strip() if len(cols) > 1 else ""
+                local = cols[2].text.strip() if len(cols) > 2 else ""
+                lutas = buscar_card_sherdog(href)
+                if lutas:
+                    eventos.append({"nome": nome, "data": data, "local": local, "url": href, "lutas": lutas})
+        return eventos
+    except:
+        return []
+
 
 def safe_float(val, default=0.0):
     try:
