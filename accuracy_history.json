@@ -1,0 +1,61 @@
+[
+  {
+    "event": "UFC Fight Night: Song vs. Figueiredo",
+    "date": "2026-05-30",
+    "sherdog_url": "https://www.sherdog.com/events/UFC-Fight-Night-277-Song-vs-Figueiredo-111528",
+    "correct": 5,
+    "total": 7,
+    "accuracy": 71.4,
+    "fights": [
+      {
+        "R": "Sergei Pavlovich",
+        "B": "Tallison Teixeira",
+        "predicted": "Sergei Pavlovich",
+        "actual": "Sergei Pavlovich",
+        "correct": true
+      },
+      {
+        "R": "Kai Asakura",
+        "B": "Cameron Smotherman",
+        "predicted": "Cameron Smotherman",
+        "actual": "Kai Asakura",
+        "correct": false
+      },
+      {
+        "R": "Jake Matthews",
+        "B": "Carlston Harris",
+        "predicted": "Jake Matthews",
+        "actual": "Jake Matthews",
+        "correct": true
+      },
+      {
+        "R": "Alex Perez",
+        "B": "Su Mudaerji",
+        "predicted": "Su Mudaerji",
+        "actual": "Su Mudaerji",
+        "correct": true
+      },
+      {
+        "R": "Luis Felipe Dias",
+        "B": "Yi Sak Lee",
+        "predicted": "Luis Felipe Dias",
+        "actual": "Luis Felipe Dias",
+        "correct": true
+      },
+      {
+        "R": "Rei Tsuruya",
+        "B": "Luis Gurule",
+        "predicted": "Rei Tsuruya",
+        "actual": "Rei Tsuruya",
+        "correct": true
+      },
+      {
+        "R": "Angela Hill",
+        "B": "Jingnan Xiong",
+        "predicted": "Jingnan Xiong",
+        "actual": "Angela Hill",
+        "correct": false
+      }
+    ]
+  }
+]
