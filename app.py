@@ -572,7 +572,7 @@ elif st.session_state.pagina == "confronto":
     )
 
 else:
-    tab1, tab2, tab3 = st.tabs(["Events", "Fighters", "Matchup"])
+    tab1, tab2, tab3, tab4 = st.tabs(["Events", "Fighters", "Matchup", "Accuracy"])
 
     with tab1:
         col1, col2, col3 = st.columns(3)
@@ -651,3 +651,33 @@ else:
                 st.session_state.nome_b = nome_b
                 st.session_state.pagina = "confronto"
                 st.rerun()
+
+    with tab4:
+        st.markdown("### Prediction accuracy")
+        import json, os
+        acc_file = "accuracy_history.json"
+        if os.path.exists(acc_file):
+            with open(acc_file) as f:
+                history = json.load(f)
+
+            total_correct = sum(e["correct"] for e in history)
+            total_fights = sum(e["total"] for e in history)
+            overall_acc = round(total_correct / total_fights * 100, 1) if total_fights > 0 else 0
+
+            col1, col2, col3 = st.columns(3)
+            col1.metric("Overall accuracy", f"{overall_acc}%")
+            col2.metric("Total correct", total_correct)
+            col3.metric("Events tracked", len(history))
+
+            st.divider()
+
+            for evento in reversed(history):
+                acc = evento["accuracy"]
+                color = "success" if acc >= 65 else "warning" if acc >= 50 else "error"
+                with st.expander(f"**{evento['event']}** — {evento['correct']}/{evento['total']} ({acc}%)", expanded=True):
+                    for fight in evento.get("fights", []):
+                        icon = "✅" if fight["correct"] else "❌"
+                        st.markdown(f"{icon} **{fight['R']} vs {fight['B']}**")
+                        st.caption(f"Predicted: {fight['predicted']} | Actual: {fight['actual']}")
+        else:
+            st.info("No accuracy data yet. Results will appear after each event.")
