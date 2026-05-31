@@ -87,28 +87,43 @@ def buscar_card_sherdog(event_url):
     try:
         resp = requests.get(event_url, headers=headers, timeout=10)
         soup = BeautifulSoup(resp.text, "html.parser")
-        tabela = soup.find("table", class_="new_table upcoming")
-        if not tabela:
-            return []
         lutas = []
-        for linha in tabela.find_all("tr")[1:]:
-            cols = linha.find_all("td")
-            fighter_cells = []
-            for col in cols:
-                lnk = col.find("a")
-                if lnk and lnk.text.strip():
-                    fighter_cells.append({
-                        "name": fix_name(lnk.text.strip()),
-                        "href": f"https://www.sherdog.com{lnk.get('href', '')}"
+        fight_card = soup.find("div", class_="fight_card")
+        if fight_card:
+            left = fight_card.find("div", class_="left_side")
+            right = fight_card.find("div", class_="right_side")
+            if left and right:
+                r_name = left.find("h3")
+                b_name = right.find("h3")
+                r_link = left.find("a")
+                b_link = right.find("a")
+                if r_name and b_name:
+                    lutas.append({
+                        "R_fighter": fix_name(r_name.text.strip()),
+                        "B_fighter": fix_name(b_name.text.strip()),
+                        "R_link": f"https://www.sherdog.com{r_link.get('href', '')}" if r_link else "",
+                        "B_link": f"https://www.sherdog.com{b_link.get('href', '')}" if b_link else "",
+                        "title_bout": "title" in fight_card.text.lower()
                     })
-            if len(fighter_cells) >= 2:
-                lutas.append({
-                    "R_fighter": fighter_cells[0]["name"],
-                    "B_fighter": fighter_cells[1]["name"],
-                    "R_link": fighter_cells[0]["href"],
-                    "B_link": fighter_cells[1]["href"],
-                    "title_bout": False
-                })
+        tabela = soup.find("table", class_="new_table upcoming")
+        if tabela:
+            for linha in tabela.find_all("tr")[1:]:
+                fighter_cells = []
+                for col in linha.find_all("td"):
+                    lnk = col.find("a")
+                    if lnk and lnk.text.strip():
+                        fighter_cells.append({
+                            "name": fix_name(lnk.text.strip()),
+                            "href": f"https://www.sherdog.com{lnk.get('href', '')}"
+                        })
+                if len(fighter_cells) >= 2:
+                    lutas.append({
+                        "R_fighter": fighter_cells[0]["name"],
+                        "B_fighter": fighter_cells[1]["name"],
+                        "R_link": fighter_cells[0]["href"],
+                        "B_link": fighter_cells[1]["href"],
+                        "title_bout": False
+                    })
         return lutas
     except:
         return []
