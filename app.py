@@ -274,19 +274,133 @@ def gerar_tags(perfil):
         tags.append("Championship experience")
     return tags
 
-def prever_confronto(perfil_r, perfil_b):
+@st.cache_data(ttl=3600)
+def buscar_odds_map():
+    key = os.environ.get("ODDS_API_KEY", "")
+    if not key:
+        return {}
     try:
+        url = "https://api.the-odds-api.com/v4/sports/mma_mixed_martial_arts/odds"
+        params = {"apiKey": key, "regions": "us", "markets": "h2h", "oddsFormat": "american"}
+        resp = requests.get(url, params=params, timeout=10)
+        if resp.status_code != 200:
+            return {}
+        data = resp.json()
+        odds_map = {}
+        for fight in data:
+            totals = {}
+            counts = {}
+            for book in fight.get("bookmakers", []):
+                for market in book.get("markets", []):
+                    if market.get("key") == "h2h":
+                        for o in market.get("outcomes", []):
+                            n = o["name"].lower()
+                            totals[n] = totals.get(n, 0) + o["price"]
+                            counts[n] = counts.get(n, 0) + 1
+            for n in totals:
+                odds_map[n] = round(totals[n] / counts[n])
+        return odds_map
+    except:
+        return {}
+
+@st.cache_data(ttl=86400)
+def sherdog_fighter_live(nome, url):
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+    try:
+        resp = requests.get(url, headers=headers, timeout=10)
+        soup = BeautifulSoup(resp.text, "html.parser")
+        lutas = []
+        tabela = soup.find("table", class_="new_table fighter")
+        if tabela:
+            for linha in tabela.find_all("tr")[1:]:
+                cols = linha.find_all("td")
+                if len(cols) >= 5:
+                    lutas.append(cols[0].text.strip().lower())
+        wins = sum(1 for l in lutas if l == "win")
+        losses = sum(1 for l in lutas if l == "loss")
+        altura = alcance = 0
+        for bio in soup.find_all("div", class_="bio-holder"):
+            t = bio.text
+            if "HEIGHT" in t and "cm" in t:
+                try: altura = float(t.split("cm")[0].split("/")[-1].strip())
+                except: pass
+            if "REACH" in t and "cm" in t:
+                try: alcance = float(t.split("cm")[0].split("/")[-1].strip())
+                except: pass
+        return {"wins": wins, "losses": losses, "altura": altura, "alcance": alcance}
+    except:
+        return None
+
+def _odds_para(nome, odds_map):
+    return odds_map.get(nome.lower(), 0)
+
+def prever_confronto(perfil_r, perfil_b, link_r="", link_b=""):
+    try:
+        odds_map = buscar_odds_map()
+        nome_r = perfil_r["nome"]
+        nome_b = perfil_b["nome"]
+
+        def get_row(nome):
+            lr = df[df["R_lower"] == nome.lower()]
+            lr2 = df[df["B_lower"] == nome.lower()]
+            if len(lr) > 0:
+                return lr.sort_values("date", ascending=False).iloc[0], "R_"
+            elif len(lr2) > 0:
+                return lr2.sort_values("date", ascending=False).iloc[0], "B_"
+            return None, None
+
+        sr, pr = get_row(nome_r)
+        sb, pb = get_row(nome_b)
+
+        def val(row, p, col, default=0.0):
+            if row is None:
+                return default
+            try:
+                v = float(row[f"{p}{col}"])
+                return v if not np.isnan(v) else default
+            except:
+                return default
+
+        # Tier 2: live Sherdog fallback for missing fighters
+        live_r = sherdog_fighter_live(nome_r, link_r) if sr is None and link_r else None
+        live_b = sherdog_fighter_live(nome_b, link_b) if sb is None and link_b else None
+
+        def fighter_feats(row, p, live, perfil):
+            if row is not None:
+                return {
+                    "ws": val(row,p,"current_win_streak"), "ls": val(row,p,"current_lose_streak"),
+                    "lws": val(row,p,"longest_win_streak"), "w": val(row,p,"wins"), "l": val(row,p,"losses"),
+                    "ss": val(row,p,"avg_SIG_STR_pct"), "td": val(row,p,"avg_TD_pct"), "sa": val(row,p,"avg_SUB_ATT"),
+                    "h": val(row,p,"Height_cms"), "rch": val(row,p,"Reach_cms"), "age": val(row,p,"age"),
+                    "rank": val(row,p,"match_weightclass_rank"),
+                }
+            elif live:
+                return {"ws":1,"ls":0,"lws":3,"w":live["wins"],"l":live["losses"],
+                    "ss":0,"td":0,"sa":0,"h":live["altura"],"rch":live["alcance"],"age":30,"rank":0}
+            else:
+                return {"ws":perfil["win_streak"],"ls":perfil["lose_streak"],"lws":perfil["longest_win_streak"],
+                    "w":perfil["wins"],"l":perfil["losses"],"ss":perfil["sig_str_pct"]/100,
+                    "td":perfil["td_pct"]/100,"sa":perfil["sub_att"],"h":0,"rch":0,"age":30,"rank":0}
+
+        fr = fighter_feats(sr, pr, live_r, perfil_r)
+        fb = fighter_feats(sb, pb, live_b, perfil_b)
+
+        r_odds = _odds_para(nome_r, odds_map)
+        b_odds = _odds_para(nome_b, odds_map)
+        if r_odds == 0 and sr is not None:
+            r_odds = val(sr, pr, "odds")
+        if b_odds == 0 and sb is not None:
+            b_odds = val(sb, pb, "odds")
+
         entrada = pd.DataFrame([[
-            perfil_r["win_streak"], perfil_b["win_streak"],
-            perfil_r["lose_streak"], perfil_b["lose_streak"],
-            perfil_r["longest_win_streak"], perfil_b["longest_win_streak"],
-            perfil_r["wins"], perfil_b["wins"],
-            perfil_r["losses"], perfil_b["losses"],
-            perfil_r["sig_str_pct"] / 100, perfil_b["sig_str_pct"] / 100,
-            perfil_r["td_pct"] / 100, perfil_b["td_pct"] / 100,
-            perfil_r["sub_att"], perfil_b["sub_att"],
-            0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+            fr["ws"], fb["ws"], fr["ls"], fb["ls"], fr["lws"], fb["lws"],
+            fr["w"], fb["w"], fr["l"], fb["l"],
+            fr["ss"], fb["ss"], fr["td"], fb["td"], fr["sa"], fb["sa"],
+            fr["h"], fb["h"], fr["rch"], fb["rch"], fr["age"], fb["age"],
+            fr["rch"] - fb["rch"], fr["age"] - fb["age"], fr["ws"] - fb["ws"], fr["ss"] - fb["ss"],
+            fr["rank"], fb["rank"], r_odds, b_odds,
         ]], columns=features)
+
         if isinstance(modelo, tuple):
             rf, lr = modelo
             prob = rf.predict_proba(entrada)[0] * 0.7 + lr.predict_proba(entrada)[0] * 0.3
@@ -307,10 +421,9 @@ def conf_label(prob):
 def render_fight(luta, evento_nome, idx=0):
     perfil_r = buscar_lutador(luta["R_fighter"])
     perfil_b = buscar_lutador(luta["B_fighter"])
-    if perfil_r and perfil_b:
-        prob_r, prob_b = prever_confronto(perfil_r, perfil_b)
-    else:
-        prob_r, prob_b = 50.0, 50.0
+    pr_tmp = perfil_r or {"nome": luta["R_fighter"], "win_streak":1,"lose_streak":0,"longest_win_streak":3,"wins":0,"losses":0,"sig_str_pct":0,"td_pct":0,"sub_att":0}
+    pb_tmp = perfil_b or {"nome": luta["B_fighter"], "win_streak":1,"lose_streak":0,"longest_win_streak":3,"wins":0,"losses":0,"sig_str_pct":0,"td_pct":0,"sub_att":0}
+    prob_r, prob_b = prever_confronto(pr_tmp, pb_tmp, luta.get("R_link",""), luta.get("B_link",""))
     vencedor = luta["R_fighter"] if prob_r >= prob_b else luta["B_fighter"]
     conf, _ = conf_label(max(prob_r, prob_b))
     titulo = luta.get("title_bout", False)
