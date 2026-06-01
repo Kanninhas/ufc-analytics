@@ -171,7 +171,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-GROQ_API_KEY = os.environ.get("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", "")
+GROQ_API_KEY = st.secrets.get("GROQ_API_KEY", os.environ.get("GROQ_API_KEY", ""))
 
 @st.cache_data
 def carregar_dados():
@@ -388,7 +388,7 @@ def gerar_tags(perfil):
 
 @st.cache_data(ttl=3600)
 def buscar_odds_map():
-    key = os.environ.get("ODDS_API_KEY", "")
+    key = st.secrets.get("ODDS_API_KEY", os.environ.get("ODDS_API_KEY", ""))
     if not key:
         return {}
     try:
