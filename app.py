@@ -13,6 +13,118 @@ from datetime import datetime, timedelta
 from bs4 import BeautifulSoup
 warnings.filterwarnings("ignore")
 
+# ============ RICH FIGHTER PROFILES ============
+def parse_sherdog_date(date_str):
+    if not date_str:
+        return None
+    cleaned = re.sub(r"\s*/\s*", " ", date_str).strip()
+    for fmt in ("%b %d %Y", "%B %d %Y"):
+        try:
+            return datetime.strptime(cleaned, fmt)
+        except:
+            continue
+    return None
+
+def categorize(method):
+    m = method.lower()
+    if "ko" in m or "tko" in m: return "KO/TKO"
+    if "sub" in m: return "Submission"
+    if "dec" in m: return "Decision"
+    return "Other"
+
+def scrape_full_profile(sherdog_url):
+    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"}
+    resp = requests.get(sherdog_url, headers=headers, timeout=10)
+    soup = BeautifulSoup(resp.text, "html.parser")
+    profile = {"url": sherdog_url}
+    name_tag = soup.find("span", class_="fn")
+    profile["name"] = name_tag.text.strip() if name_tag else ""
+    height = reach = age = ""
+    for bio in soup.find_all("div", class_="bio-holder"):
+        t = bio.text
+        if "HEIGHT" in t:
+            m = re.search(r"([\d.]+)\s*cm", t)
+            if m: height = m.group(1)
+        if "REACH" in t:
+            m = re.search(r"REACH[^\d]*([\d.]+)\s*cm", t)
+            if m: reach = m.group(1)
+        if "AGE" in t:
+            m = re.search(r"AGE\s*(\d+)", t)
+            if m: age = m.group(1)
+    profile["height_cm"] = height; profile["reach_cm"] = reach; profile["age"] = age
+    wc = ""
+    cls_div = soup.find("div", class_="association-class")
+    if cls_div and "CLASS" in cls_div.text:
+        wc = cls_div.text.split("CLASS")[-1].strip().split("\n")[0].strip()
+    profile["weight_class"] = wc
+    fights = []
+    tabela = soup.find("table", class_="new_table fighter")
+    if tabela:
+        for linha in tabela.find_all("tr")[1:]:
+            cols = linha.find_all("td")
+            if len(cols) >= 6:
+                result = cols[0].text.strip().lower()
+                opp_link = cols[1].find("a")
+                opponent = fix_name(opp_link.text.strip()) if opp_link else cols[1].text.strip()
+                event_cell = cols[2].text.strip()
+                dm = re.search(r"([A-Z][a-z]{2}\s*/?\s*\d{1,2}\s*/?\s*\d{4})", event_cell)
+                date = dm.group(1) if dm else ""
+                fights.append({"result": result, "opponent": opponent, "date": date, "method": cols[3].text.strip()[:40], "round": cols[4].text.strip()})
+    profile["fights"] = fights
+    profile["total_fights"] = len(fights)
+    profile["wins"] = sum(1 for f in fights if f["result"] == "win")
+    profile["losses"] = sum(1 for f in fights if f["result"] == "loss")
+    return profile
+
+def gerar_insights(profile):
+    fights = profile.get("fights", [])
+    if not fights: return {"tags": [], "insights": []}
+    wins = [f for f in fights if f["result"] == "win"]
+    losses = [f for f in fights if f["result"] == "loss"]
+    tags = []; insights = []
+    stopped = [f for f in losses if categorize(f["method"]) in ("KO/TKO", "Submission")]
+    if losses and not stopped:
+        tags.append("Never been finished"); insights.append(f"Has never been stopped — all {len(losses)} losses came by decision.")
+    wf2 = [f for f in wins if categorize(f["method"]) in ("KO/TKO", "Submission")]
+    if wins:
+        rate = round(len(wf2)/len(wins)*100)
+        if rate >= 70:
+            tags.append("Finisher"); insights.append(f"Finishes {rate}% of his wins — {len(wf2)} of {len(wins)} inside the distance.")
+    r1 = [f for f in wf2 if str(f["round"]).strip() == "1"]
+    if len(wf2) >= 3 and len(r1)/len(wf2) >= 0.5:
+        tags.append("Fast starter"); insights.append(f"{len(r1)} of his {len(wf2)} finishes came in round 1.")
+    if wins:
+        mc = {}
+        for f in wins:
+            c = categorize(f["method"]); mc[c] = mc.get(c, 0)+1
+        tm, tc = max(mc.items(), key=lambda x: x[1])
+        if tc/len(wins) >= 0.6:
+            if tm == "Submission": tags.append("Submission specialist"); insights.append(f"{tc} of {len(wins)} wins by submission — a true grappling threat.")
+            elif tm == "KO/TKO": tags.append("Knockout artist"); insights.append(f"{tc} of {len(wins)} wins by KO/TKO — serious power.")
+            elif tm == "Decision": tags.append("Volume grinder"); insights.append(f"{tc} of {len(wins)} wins by decision — wins on output, not power.")
+    deep = [f for f in fights if str(f["round"]).strip() in ("3","4","5")]
+    if len(deep) >= 3:
+        dw = sum(1 for f in deep if f["result"] == "win"); dr = dw/len(deep)
+        if dr <= 0.34: tags.append("Fades late"); insights.append(f"Just {dw}-{len(deep)-dw} in fights reaching round 3 — a cardio question.")
+        elif dr >= 0.8: tags.append("Strong late"); insights.append(f"{dw}-{len(deep)-dw} in fights that reach round 3 — gets stronger late.")
+    streak = 0; stp = fights[0]["result"]
+    for f in fights:
+        if f["result"] == stp: streak += 1
+        else: break
+    if stp == "win" and streak >= 4: tags.append(f"{streak}-fight win streak"); insights.append(f"Riding a {streak}-fight win streak — peak form.")
+    elif stp == "loss" and streak >= 2: tags.append("Skid"); insights.append(f"On a {streak}-fight losing skid.")
+    ld = parse_sherdog_date(fights[0]["date"])
+    if ld:
+        days = (datetime.now() - ld).days
+        if days > 1825: pass
+        elif days > 730: tags.append("Long layoff"); insights.append(f"Hasn't fought in over {days//365} years — ring rust is a real factor.")
+        elif days > 540: tags.append("Long layoff"); insights.append(f"Hasn't fought in {round(days/30)} months — ring rust is a real factor.")
+        elif days < 90: tags.append("Active")
+    if len(fights) >= 30: tags.append("Veteran"); insights.append(f"Deep experience — {len(fights)} pro fights.")
+    return {"tags": tags, "insights": insights}
+
+
+
 st.set_page_config(
     page_title="UFC Analytics",
     page_icon="🥊",
@@ -464,6 +576,33 @@ def render_fight(luta, evento_nome, idx=0):
             st.rerun()
     st.divider()
 
+@st.cache_data(ttl=86400)
+def encontrar_link_sherdog(nome):
+    """Find a fighter's Sherdog URL from current event cards"""
+    try:
+        eventos = buscar_proximos_eventos()
+        for ev in eventos:
+            for luta in ev.get("lutas", []):
+                if luta.get("R_fighter","").lower() == nome.lower() and luta.get("R_link"):
+                    return luta["R_link"]
+                if luta.get("B_fighter","").lower() == nome.lower() and luta.get("B_link"):
+                    return luta["B_link"]
+    except:
+        pass
+    return None
+
+@st.cache_data(ttl=86400)
+def perfil_insights(nome, sherdog_url):
+    """Scrape rich profile + generate insights, cached per fighter"""
+    if not sherdog_url:
+        return None
+    try:
+        prof = scrape_full_profile(sherdog_url)
+        ins = gerar_insights(prof)
+        return {"profile": prof, "insights": ins}
+    except:
+        return None
+
 def mostrar_perfil(nome):
     perfil = buscar_lutador(nome)
     if not perfil:
@@ -490,9 +629,21 @@ def mostrar_perfil(nome):
         cols[2].metric("Win streak", perfil["win_streak"])
         cols[3].metric("Title bouts", perfil["title_bouts"])
 
-    if tags:
-        tags_html = " ".join([f'<span class="tag">{t}</span>' for t in tags])
+    # Rich Sherdog insights
+    sherdog_link = encontrar_link_sherdog(nome)
+    rich = perfil_insights(nome, sherdog_link) if sherdog_link else None
+    rich_tags = rich["insights"]["tags"] if rich else []
+
+    all_tags = list(dict.fromkeys(tags + rich_tags))
+    if all_tags:
+        tags_html = " ".join([f'<span class="tag">{t}</span>' for t in all_tags])
         st.markdown(tags_html, unsafe_allow_html=True)
+
+    if rich and rich["insights"]["insights"]:
+        st.divider()
+        st.markdown('<div class="section-title">Fighter insights</div>', unsafe_allow_html=True)
+        for s in rich["insights"]["insights"]:
+            st.markdown(f"<div style='padding:8px 12px;background:#16161a;border-left:3px solid #E24B4A;border-radius:4px;margin-bottom:6px;font-size:14px;color:#ddd'>{s}</div>", unsafe_allow_html=True)
 
     st.divider()
     st.markdown('<div class="section-title">Recent form</div>', unsafe_allow_html=True)
