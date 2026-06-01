@@ -181,6 +181,7 @@ st.markdown("""
     .fc-pick-name { color:#fff; font-size:13px; font-weight:700; }
     .fc-pick-conf { font-size:10px; margin-top:3px; }
     .fc-bars { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .fc table, .fc td, .fc tr { border:none !important; border-collapse:collapse; }
     .fc-bar-wrap { }
     .fc-bar-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; }
     .fc-bar-name { color:#999; font-size:12px; }
@@ -584,7 +585,7 @@ def render_fight(luta, evento_nome, idx=0):
     card_html = (
         "<div style='background:#111318;border:1px solid #1e2028;border-radius:14px;padding:20px 20px 16px 20px;margin-bottom:4px'>"
         + title_html +
-        "<table width='100%' cellpadding='0' cellspacing='0' style='margin-bottom:16px'><tr>"
+        "<table width='100%' cellpadding='0' cellspacing='0' border='0' style='margin-bottom:16px;border:none'><tr>"
         "<td width='42%' valign='middle'>"
           "<div style='color:#f0f0f0;font-size:16px;font-weight:700;margin-bottom:3px'>" + r_name + "</div>"
           "<div style='color:#555;font-size:12px'>" + str(r_wins) + "W · " + str(r_losses) + "L</div>"
@@ -599,9 +600,9 @@ def render_fight(luta, evento_nome, idx=0):
           "<div style='color:#555;font-size:12px;text-align:right'>" + str(b_wins) + "W · " + str(b_losses) + "L</div>"
         "</td>"
         "</tr></table>"
-        "<table width='100%' cellpadding='0' cellspacing='0'><tr>"
+        "<table width='100%' cellpadding='0' cellspacing='0' border='0' style='border:none'><tr>"
         "<td width='50%' style='padding-right:8px'>"
-          "<table width='100%' cellpadding='0' cellspacing='0' style='margin-bottom:5px'><tr>"
+          "<table width='100%' cellpadding='0' cellspacing='0' border='0' style='margin-bottom:5px;border:none'><tr>"
             "<td><span style='color:#999;font-size:12px'>" + r_name.split()[0] + "</span></td>"
             "<td align='right'><span style='color:" + pct_r_color + ";font-size:13px;font-weight:700'>" + str(prob_r) + "%</span></td>"
           "</tr></table>"
@@ -610,7 +611,7 @@ def render_fight(luta, evento_nome, idx=0):
           "</div>"
         "</td>"
         "<td width='50%' style='padding-left:8px'>"
-          "<table width='100%' cellpadding='0' cellspacing='0' style='margin-bottom:5px'><tr>"
+          "<table width='100%' cellpadding='0' cellspacing='0' border='0' style='margin-bottom:5px;border:none'><tr>"
             "<td><span style='color:#999;font-size:12px'>" + b_name.split()[0] + "</span></td>"
             "<td align='right'><span style='color:" + pct_b_color + ";font-size:13px;font-weight:700'>" + str(prob_b) + "%</span></td>"
           "</tr></table>"
