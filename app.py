@@ -574,7 +574,7 @@ def render_fight(luta, evento_nome, idx=0):
             st.session_state.lutador_selecionado = luta["B_fighter"]
             st.session_state.pagina = "perfil"
             st.rerun()
-    if st.button(f"⚔ View full matchup: {luta['R_fighter'].split()[0]} vs {luta['B_fighter'].split()[0]}", key=f"vs_{evento_nome}_{idx}", type="primary", use_container_width=True):
+    if st.button(f"⚔ {luta['R_fighter'].split()[0]} vs {luta['B_fighter'].split()[0]} — full matchup", key=f"vs_{evento_nome}_{idx}"):
         st.session_state.nome_r = luta["R_fighter"]
         st.session_state.nome_b = luta["B_fighter"]
         st.session_state.pagina = "confronto"
