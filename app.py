@@ -572,78 +572,51 @@ def render_fight(luta, evento_nome, idx=0):
     b_wins = perfil_b["wins"] if perfil_b else 0
     b_losses = perfil_b["losses"] if perfil_b else 0
     pick_r = vencedor == luta["R_fighter"]
-    r_name = luta["R_fighter"]
-    b_name = luta["B_fighter"]
-    venc_first = vencedor.split()[0]
     conf_color = {"conf-high":"#639922","conf-med":"#BA7517","conf-low":"#555"}.get(conf_cls, "#555")
+    pct_r_color = "#E24B4A" if pick_r else "#555"
+    pct_b_color = "#378ADD" if not pick_r else "#555"
 
-    title_html = ""
-    if titulo:
-        title_html = "<div class='fc-title'>🏆 Title Fight</div>"
+    with st.container():
+        if titulo:
+            st.markdown("🏆 **Title Fight**")
 
-    pct_r_color = "#E24B4A" if pick_r else "#444"
-    pct_b_color = "#378ADD" if not pick_r else "#444"
+        # Fighter names row
+        col_r, col_mid, col_b = st.columns([5, 3, 5])
+        with col_r:
+            st.markdown(f"<div style='color:#f0f0f0;font-size:16px;font-weight:700'>{luta['R_fighter']}</div><div style='color:#555;font-size:12px'>{r_wins}W · {r_losses}L</div>", unsafe_allow_html=True)
+        with col_mid:
+            st.markdown(f"<div style='text-align:center;padding:6px 0'><div style='color:#444;font-size:10px;text-transform:uppercase;letter-spacing:.05em'>Pick</div><div style='color:#fff;font-size:14px;font-weight:700'>{vencedor.split()[0]}</div><div style='color:{conf_color};font-size:10px'>{conf}</div></div>", unsafe_allow_html=True)
+        with col_b:
+            st.markdown(f"<div style='text-align:right;color:#f0f0f0;font-size:16px;font-weight:700'>{luta['B_fighter']}</div><div style='text-align:right;color:#555;font-size:12px'>{b_wins}W · {b_losses}L</div>", unsafe_allow_html=True)
 
-    card_html = (
-        "<div style='background:#111318;border:1px solid #1e2028;border-radius:14px;padding:20px 20px 16px 20px;margin-bottom:4px'>"
-        + title_html +
-        "<table width='100%' cellpadding='0' cellspacing='0' border='0' style='margin-bottom:16px;border:none'><tr>"
-        "<td width='42%' valign='middle' style='border:none'>"
-          "<div style='color:#f0f0f0;font-size:16px;font-weight:700;margin-bottom:3px'>" + r_name + "</div>"
-          "<div style='color:#555;font-size:12px'>" + str(r_wins) + "W · " + str(r_losses) + "L</div>"
-        "</td>"
-        "<td width='16%' valign='middle' align='center' style='border:none'>"
-          "<div style='color:#444;font-size:10px;letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px'>Pick</div>"
-          "<div style='color:#fff;font-size:14px;font-weight:700'>" + venc_first + "</div>"
-          "<div style='font-size:10px;margin-top:2px;color:" + conf_color + "'>" + conf + "</div>"
-        "</td>"
-        "<td width='42%' valign='middle' align='right' style='border:none'>"
-          "<div style='color:#f0f0f0;font-size:16px;font-weight:700;margin-bottom:3px;text-align:right'>" + b_name + "</div>"
-          "<div style='color:#555;font-size:12px;text-align:right'>" + str(b_wins) + "W · " + str(b_losses) + "L</div>"
-        "</td>"
-        "</tr></table>"
-        "<table width='100%' cellpadding='0' cellspacing='0' border='0' style='border-collapse:collapse'><tr>"
-        "<td width='50%' style='padding-right:8px;border:none'>"
-          "<table width='100%' cellpadding='0' cellspacing='0' border='0' style='margin-bottom:5px;border-collapse:collapse'><tr>"
-            "<td style='border:none'><span style='color:#999;font-size:12px'>" + r_name.split()[0] + "</span></td>"
-            "<td align='right' style='border:none'><span style='color:" + pct_r_color + ";font-size:13px;font-weight:700'>" + str(prob_r) + "%</span></td>"
-          "</tr></table>"
-          "<div style='height:4px;background:#1a1a1e;border-radius:2px;overflow:hidden'>"
-            "<div style='width:" + str(prob_r) + "%;height:100%;background:linear-gradient(90deg,#c43a39,#E24B4A);border-radius:2px'></div>"
-          "</div>"
-        "</td>"
-        "<td width='50%' style='padding-left:8px;border:none'>"
-          "<table width='100%' cellpadding='0' cellspacing='0' border='0' style='margin-bottom:5px;border-collapse:collapse'><tr>"
-            "<td style='border:none'><span style='color:#999;font-size:12px'>" + b_name.split()[0] + "</span></td>"
-            "<td align='right' style='border:none'><span style='color:" + pct_b_color + ";font-size:13px;font-weight:700'>" + str(prob_b) + "%</span></td>"
-          "</tr></table>"
-          "<div style='height:4px;background:#1a1a1e;border-radius:2px;overflow:hidden'>"
-            "<div style='width:" + str(prob_b) + "%;height:100%;background:linear-gradient(90deg,#2a6bb0,#378ADD);border-radius:2px'></div>"
-          "</div>"
-        "</td>"
-        "</tr></table>"
-        "</div>"
-    )
-    st.markdown(card_html, unsafe_allow_html=True)
+        # Probability bars row
+        col_pr, col_pb = st.columns(2)
+        with col_pr:
+            st.markdown(f"<div style='display:flex;justify-content:space-between;margin-bottom:4px'><span style='color:#999;font-size:12px'>{luta['R_fighter'].split()[0]}</span><span style='color:{pct_r_color};font-size:13px;font-weight:700'>{prob_r}%</span></div><div style='height:4px;background:#1a1a1e;border-radius:2px'><div style='width:{prob_r}%;height:4px;background:linear-gradient(90deg,#c43a39,#E24B4A);border-radius:2px'></div></div>", unsafe_allow_html=True)
+        with col_pb:
+            st.markdown(f"<div style='display:flex;justify-content:space-between;margin-bottom:4px'><span style='color:#999;font-size:12px'>{luta['B_fighter'].split()[0]}</span><span style='color:{pct_b_color};font-size:13px;font-weight:700'>{prob_b}%</span></div><div style='height:4px;background:#1a1a1e;border-radius:2px'><div style='width:{prob_b}%;height:4px;background:linear-gradient(90deg,#2a6bb0,#378ADD);border-radius:2px'></div></div>", unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns([5, 6, 5])
-    with col1:
-        if st.button(f"👤 {r_name.split()[0]}", key=f"pr_{evento_nome}_{idx}_{r_name}"):
-            st.session_state.lutador_selecionado = r_name
-            st.session_state.pagina = "perfil"
-            st.rerun()
-    with col2:
-        if st.button("⚔ Full matchup", key=f"vs_{evento_nome}_{idx}", use_container_width=True):
-            st.session_state.nome_r = r_name
-            st.session_state.nome_b = b_name
-            st.session_state.pagina = "confronto"
-            st.rerun()
-    with col3:
-        if st.button(f"👤 {b_name.split()[0]}", key=f"pb_{evento_nome}_{idx}_{b_name}"):
-            st.session_state.lutador_selecionado = b_name
-            st.session_state.pagina = "perfil"
-            st.rerun()
-    st.markdown("<div style='margin-bottom:8px'></div>", unsafe_allow_html=True)
+        # Buttons row
+        col1, col2, col3 = st.columns([3, 4, 3])
+        with col1:
+            if st.button(f"👤 {luta['R_fighter'].split()[0]}", key=f"pr_{evento_nome}_{idx}_{luta['R_fighter']}"):
+                st.session_state.lutador_selecionado = luta["R_fighter"]
+                st.session_state.pagina = "perfil"
+                st.rerun()
+        with col2:
+            if st.button("⚔ Full matchup", key=f"vs_{evento_nome}_{idx}", use_container_width=True):
+                st.session_state.nome_r = luta["R_fighter"]
+                st.session_state.nome_b = luta["B_fighter"]
+                st.session_state.pagina = "confronto"
+                st.rerun()
+        with col3:
+            if st.button(f"👤 {luta['B_fighter'].split()[0]}", key=f"pb_{evento_nome}_{idx}_{luta['B_fighter']}"):
+                st.session_state.lutador_selecionado = luta["B_fighter"]
+                st.session_state.pagina = "perfil"
+                st.rerun()
+
+        st.divider()
+
 
 @st.cache_data(ttl=86400)
 def encontrar_link_sherdog(nome):
