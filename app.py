@@ -387,7 +387,7 @@ def gerar_tags(perfil):
     return tags
 
 @st.cache_data(ttl=3600)
-def buscar_odds_map():
+def buscar_odds_map(_v=2):
     key = st.secrets.get("ODDS_API_KEY", os.environ.get("ODDS_API_KEY", ""))
     if not key:
         st.session_state["_odds_debug"] = "NO KEY FOUND in secrets or env"
