@@ -545,49 +545,57 @@ def render_fight(luta, evento_nome, idx=0):
     b_losses = perfil_b["losses"] if perfil_b else 0
     pick_r = vencedor == luta["R_fighter"]
 
-    # Single HTML card - clean, readable
+    # Single HTML card - built as string to avoid f-string conflicts
     title_badge = "<div style='text-align:center;margin-bottom:8px'><span style='background:#f0a020;color:#000;font-size:11px;font-weight:700;padding:3px 10px;border-radius:4px'>🏆 TITLE FIGHT</span></div>" if titulo else ""
+    pick_color_r = "#E24B4A" if pick_r else "#666"
+    pick_color_b = "#378ADD" if not pick_r else "#666"
+    r_name = luta["R_fighter"]
+    b_name = luta["B_fighter"]
+    r_first = r_name.split()[0]
+    b_first = b_name.split()[0]
+    venc_first = vencedor.split()[0]
 
-    st.markdown(f"""
-    <div style="background:#141417;border:1px solid #222;border-radius:10px;padding:16px;margin-bottom:4px">
-        {title_badge}
-        <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;margin-bottom:14px">
-            <div>
-                <div style="color:#fff;font-size:17px;font-weight:700;margin-bottom:2px">{luta['R_fighter']}</div>
-                <div style="color:#666;font-size:13px">{r_wins}W · {r_losses}L</div>
-            </div>
-            <div style="text-align:center;padding:8px 14px;background:#0d0d0f;border-radius:8px;min-width:80px">
-                <div style="color:#555;font-size:11px;margin-bottom:4px">PICK</div>
-                <div style="color:#fff;font-size:15px;font-weight:700">{vencedor.split()[0]}</div>
-                <div style="color:#888;font-size:11px;margin-top:2px">{conf}</div>
-            </div>
-            <div style="text-align:right">
-                <div style="color:#fff;font-size:17px;font-weight:700;margin-bottom:2px">{luta['B_fighter']}</div>
-                <div style="color:#666;font-size:13px">{b_wins}W · {b_losses}L</div>
-            </div>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:4px">
-            <div>
-                <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-                    <span style="color:#aaa;font-size:12px">{luta['R_fighter'].split()[0]}</span>
-                    <span style="color:{'#E24B4A' if pick_r else '#666'};font-size:12px;font-weight:700">{prob_r}%</span>
-                </div>
-                <div style="height:5px;background:#1e1e1e;border-radius:3px;overflow:hidden">
-                    <div style="width:{prob_r}%;height:100%;background:#E24B4A;border-radius:3px"></div>
-                </div>
-            </div>
-            <div>
-                <div style="display:flex;justify-content:space-between;margin-bottom:3px">
-                    <span style="color:#aaa;font-size:12px">{luta['B_fighter'].split()[0]}</span>
-                    <span style="color:{'#378ADD' if not pick_r else '#666'};font-size:12px;font-weight:700">{prob_b}%</span>
-                </div>
-                <div style="height:5px;background:#1e1e1e;border-radius:3px;overflow:hidden">
-                    <div style="width:{prob_b}%;height:100%;background:#378ADD;border-radius:3px"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    html = (
+        "<div style='background:#141417;border:1px solid #222;border-radius:10px;padding:16px;margin-bottom:4px'>"
+        + title_badge +
+        "<div style='display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;margin-bottom:14px'>"
+            "<div>"
+                "<div style='color:#fff;font-size:17px;font-weight:700;margin-bottom:2px'>" + r_name + "</div>"
+                "<div style='color:#888;font-size:13px'>" + str(r_wins) + "W · " + str(r_losses) + "L</div>"
+            "</div>"
+            "<div style='text-align:center;padding:8px 14px;background:#0d0d0f;border-radius:8px;min-width:80px'>"
+                "<div style='color:#555;font-size:11px;margin-bottom:4px'>PICK</div>"
+                "<div style='color:#fff;font-size:15px;font-weight:700'>" + venc_first + "</div>"
+                "<div style='color:#888;font-size:11px;margin-top:2px'>" + conf + "</div>"
+            "</div>"
+            "<div style='text-align:right'>"
+                "<div style='color:#fff;font-size:17px;font-weight:700;margin-bottom:2px'>" + b_name + "</div>"
+                "<div style='color:#888;font-size:13px'>" + str(b_wins) + "W · " + str(b_losses) + "L</div>"
+            "</div>"
+        "</div>"
+        "<div style='display:grid;grid-template-columns:1fr 1fr;gap:8px'>"
+            "<div>"
+                "<div style='display:flex;justify-content:space-between;margin-bottom:4px'>"
+                    "<span style='color:#ccc;font-size:13px'>" + r_first + "</span>"
+                    "<span style='color:" + pick_color_r + ";font-size:13px;font-weight:700'>" + str(prob_r) + "%</span>"
+                "</div>"
+                "<div style='height:5px;background:#1e1e1e;border-radius:3px;overflow:hidden'>"
+                    "<div style='width:" + str(prob_r) + "%;height:100%;background:#E24B4A;border-radius:3px'></div>"
+                "</div>"
+            "</div>"
+            "<div>"
+                "<div style='display:flex;justify-content:space-between;margin-bottom:4px'>"
+                    "<span style='color:#ccc;font-size:13px'>" + b_first + "</span>"
+                    "<span style='color:" + pick_color_b + ";font-size:13px;font-weight:700'>" + str(prob_b) + "%</span>"
+                "</div>"
+                "<div style='height:5px;background:#1e1e1e;border-radius:3px;overflow:hidden'>"
+                    "<div style='width:" + str(prob_b) + "%;height:100%;background:#378ADD;border-radius:3px'></div>"
+                "</div>"
+            "</div>"
+        "</div>"
+        "</div>"
+    )
+    st.markdown(html, unsafe_allow_html=True)
 
     col1, col2, col3 = st.columns([2, 3, 2])
     with col1:
