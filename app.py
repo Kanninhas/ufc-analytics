@@ -563,7 +563,7 @@ def render_fight(luta, evento_nome, idx=0):
     with col_p2:
         st.progress(prob_b / 100, text=f"{luta['B_fighter'].split()[0]}: {prob_b}%")
 
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns(3)
     with col1:
         if st.button(f"Profile: {luta['R_fighter'].split()[0]}", key=f"pr_{evento_nome}_{idx}_{luta['R_fighter']}"):
             st.session_state.lutador_selecionado = luta["R_fighter"]
@@ -573,6 +573,12 @@ def render_fight(luta, evento_nome, idx=0):
         if st.button(f"Profile: {luta['B_fighter'].split()[0]}", key=f"pb_{evento_nome}_{idx}_{luta['B_fighter']}"):
             st.session_state.lutador_selecionado = luta["B_fighter"]
             st.session_state.pagina = "perfil"
+            st.rerun()
+    with col3:
+        if st.button("⚔ View matchup", key=f"vs_{evento_nome}_{idx}", type="primary"):
+            st.session_state.nome_r = luta["R_fighter"]
+            st.session_state.nome_b = luta["B_fighter"]
+            st.session_state.pagina = "confronto"
             st.rerun()
     st.divider()
 
@@ -853,42 +859,57 @@ def mostrar_confronto(nome_r, nome_b):
             return round((abs(o)/(abs(o)+100))*100 if o < 0 else (100/(o+100))*100, 1)
         imp_r = implied(r_odds); imp_b = implied(b_odds)
         agree = (market_fav == vencedor)
-        verdict = "Model agrees with the betting market" if agree else "Model DISAGREES with the market — sees an upset"
+        verdict = "✓ Model agrees with the betting market" if agree else "⚡ Model DISAGREES — sees an upset"
         vcolor = "#3fb950" if agree else "#f0a020"
         st.markdown(f"""
         <div style="background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:16px;margin-top:10px">
-            <div style="font-size:13px;color:#555;margin-bottom:10px">Model vs. betting market</div>
-            <div style="display:flex;justify-content:space-between;font-size:13px;color:#ccc;margin-bottom:6px">
-                <span>{nome_r}: <b>{'+' if r_odds>0 else ''}{r_odds}</b> ({imp_r}% implied)</span>
-                <span>{nome_b}: <b>{'+' if b_odds>0 else ''}{b_odds}</b> ({imp_b}% implied)</span>
+            <div style="font-size:13px;color:#555;margin-bottom:12px">Model vs. betting market</div>
+            <div style="display:flex;flex-wrap:wrap;gap:10px;margin-bottom:10px">
+                <div style="flex:1;min-width:140px;background:#16161a;border-radius:8px;padding:10px">
+                    <div style="color:#E24B4A;font-weight:600;font-size:13px">{nome_r}</div>
+                    <div style="color:#fff;font-size:18px;font-weight:700">{'+' if r_odds>0 else ''}{r_odds}</div>
+                    <div style="color:#777;font-size:11px">{imp_r}% implied</div>
+                </div>
+                <div style="flex:1;min-width:140px;background:#16161a;border-radius:8px;padding:10px">
+                    <div style="color:#378ADD;font-weight:600;font-size:13px">{nome_b}</div>
+                    <div style="color:#fff;font-size:18px;font-weight:700">{'+' if b_odds>0 else ''}{b_odds}</div>
+                    <div style="color:#777;font-size:11px">{imp_b}% implied</div>
+                </div>
             </div>
-            <div style="color:{vcolor};font-weight:600;font-size:14px;margin-top:8px">{verdict}</div>
+            <div style="color:{vcolor};font-weight:700;font-size:15px">{verdict}</div>
         </div>
         """, unsafe_allow_html=True)
 
-    # Head-to-head comparison strip
-    st.markdown('<div class="section-title" style="margin-top:16px">Head-to-head</div>', unsafe_allow_html=True)
+    # Head-to-head comparison
+    st.markdown('<div class="section-title" style="margin-top:18px">Head-to-head</div>', unsafe_allow_html=True)
+    # Fighter name headers
+    st.markdown(
+        f"<div style='display:flex;align-items:center;padding:8px 0 12px 0'>"
+        f"<span style='flex:1;text-align:right;color:#E24B4A;font-weight:700;font-size:16px'>{perfil_r['nome']}</span>"
+        f"<span style='width:120px'></span>"
+        f"<span style='flex:1;color:#378ADD;font-weight:700;font-size:16px'>{perfil_b['nome']}</span>"
+        f"</div>", unsafe_allow_html=True
+    )
     def adv_row(label, val_r, val_b, higher_better=True):
         try:
             fr = float(str(val_r).replace("cm","").replace("%","").strip())
             fb = float(str(val_b).replace("cm","").replace("%","").strip())
             if fr == fb:
-                cr = cb = "#888"
+                cr = cb = "#aaa"
             elif (fr > fb) == higher_better:
-                cr, cb = "#3fb950", "#888"
+                cr, cb = "#3fb950", "#aaa"
             else:
-                cr, cb = "#888", "#3fb950"
+                cr, cb = "#aaa", "#3fb950"
         except:
-            cr = cb = "#ccc"
+            cr = cb = "#ddd"
         st.markdown(
-            f"<div style='display:flex;align-items:center;padding:6px 0;border-bottom:1px solid #161616'>"
-            f"<span style='flex:1;text-align:right;color:{cr};font-weight:600'>{val_r}</span>"
-            f"<span style='width:130px;text-align:center;color:#555;font-size:12px'>{label}</span>"
-            f"<span style='flex:1;color:{cb};font-weight:600'>{val_b}</span>"
+            f"<div style='display:flex;align-items:center;padding:11px 0;border-bottom:1px solid #1a1a1a'>"
+            f"<span style='flex:1;text-align:right;color:{cr};font-weight:700;font-size:22px'>{val_r}</span>"
+            f"<span style='width:120px;text-align:center;color:#666;font-size:13px;text-transform:uppercase;letter-spacing:0.5px'>{label}</span>"
+            f"<span style='flex:1;color:{cb};font-weight:700;font-size:22px'>{val_b}</span>"
             f"</div>", unsafe_allow_html=True
         )
-    adv_row(f"{perfil_r['wins']}-{perfil_r['losses']}", perfil_r['wins'], perfil_b['wins'])
-    st.markdown(f"<div style='text-align:center;color:#444;font-size:11px;margin-top:-4px;margin-bottom:4px'>RECORD &nbsp;·&nbsp; {perfil_b['wins']}-{perfil_b['losses']}</div>", unsafe_allow_html=True)
+    adv_row("Record", f"{perfil_r['wins']}-{perfil_r['losses']}", f"{perfil_b['wins']}-{perfil_b['losses']}")
     adv_row("KO wins", perfil_r['ko_wins'], perfil_b['ko_wins'])
     adv_row("Sub wins", perfil_r['sub_wins'], perfil_b['sub_wins'])
     adv_row("Striking %", perfil_r['sig_str_pct'], perfil_b['sig_str_pct'])
