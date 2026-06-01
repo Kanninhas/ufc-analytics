@@ -168,6 +168,31 @@ st.markdown("""
     .section-title { font-size: 11px; font-weight: 600; color: #444; text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 14px; }
     .form-dot-w { display: inline-block; width: 20px; height: 20px; border-radius: 50%; background: #27500A44; color: #639922; font-size: 10px; font-weight: 700; text-align: center; line-height: 20px; margin: 1px; }
     .form-dot-l { display: inline-block; width: 20px; height: 20px; border-radius: 50%; background: #7F1F1F44; color: #E24B4A; font-size: 10px; font-weight: 700; text-align: center; line-height: 20px; margin: 1px; }
+    /* Fight card redesign */
+    .fc { background:#111318; border:1px solid #1e2028; border-radius:14px; padding:20px 20px 14px 20px; margin-bottom:12px; }
+    .fc-title { color:#f0a020; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; margin-bottom:12px; }
+    .fc-row { display:grid; grid-template-columns:1fr 90px 1fr; align-items:center; gap:0; margin-bottom:18px; }
+    .fc-fighter-r { }
+    .fc-fighter-b { text-align:right; }
+    .fc-name { color:#f0f0f0; font-size:16px; font-weight:700; line-height:1.2; margin-bottom:4px; }
+    .fc-record { color:#555; font-size:12px; }
+    .fc-pick { text-align:center; }
+    .fc-pick-label { color:#444; font-size:10px; letter-spacing:.06em; text-transform:uppercase; margin-bottom:4px; }
+    .fc-pick-name { color:#fff; font-size:13px; font-weight:700; }
+    .fc-pick-conf { font-size:10px; margin-top:3px; }
+    .fc-bars { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .fc-bar-wrap { }
+    .fc-bar-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:5px; }
+    .fc-bar-name { color:#999; font-size:12px; }
+    .fc-bar-pct-r { color:#E24B4A; font-size:13px; font-weight:700; }
+    .fc-bar-pct-b { color:#378ADD; font-size:13px; font-weight:700; }
+    .fc-bar-pct-dim { color:#444; font-size:13px; font-weight:700; }
+    .fc-bar-track { height:4px; background:#1a1a1e; border-radius:2px; overflow:hidden; }
+    .fc-bar-fill-r { height:100%; background:linear-gradient(90deg,#c43a39,#E24B4A); border-radius:2px; }
+    .fc-bar-fill-b { height:100%; background:linear-gradient(90deg,#2a6bb0,#378ADD); border-radius:2px; }
+    /* Action buttons below card */
+    .stButton > button { background:#1a1a1f; color:#bbb; border:1px solid #2a2a35; border-radius:8px; font-weight:500; font-size:13px; transition:all .15s; }
+    .stButton > button:hover { background:#222230; border-color:#E24B4A; color:#fff; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -537,84 +562,81 @@ def render_fight(luta, evento_nome, idx=0):
     pb_tmp = perfil_b or {"nome": luta["B_fighter"], "win_streak":1,"lose_streak":0,"longest_win_streak":3,"wins":0,"losses":0,"sig_str_pct":0,"td_pct":0,"sub_att":0}
     prob_r, prob_b = prever_confronto(pr_tmp, pb_tmp, luta.get("R_link",""), luta.get("B_link",""))
     vencedor = luta["R_fighter"] if prob_r >= prob_b else luta["B_fighter"]
-    conf, _ = conf_label(max(prob_r, prob_b))
+    conf, conf_cls = conf_label(max(prob_r, prob_b))
     titulo = luta.get("title_bout", False)
     r_wins = perfil_r["wins"] if perfil_r else 0
     r_losses = perfil_r["losses"] if perfil_r else 0
     b_wins = perfil_b["wins"] if perfil_b else 0
     b_losses = perfil_b["losses"] if perfil_b else 0
     pick_r = vencedor == luta["R_fighter"]
-
-    # Single HTML card - built as string to avoid f-string conflicts
-    title_badge = "<div style='text-align:center;margin-bottom:8px'><span style='background:#f0a020;color:#000;font-size:11px;font-weight:700;padding:3px 10px;border-radius:4px'>🏆 TITLE FIGHT</span></div>" if titulo else ""
-    pick_color_r = "#E24B4A" if pick_r else "#666"
-    pick_color_b = "#378ADD" if not pick_r else "#666"
     r_name = luta["R_fighter"]
     b_name = luta["B_fighter"]
-    r_first = r_name.split()[0]
-    b_first = b_name.split()[0]
     venc_first = vencedor.split()[0]
+    conf_color = {"conf-high":"#639922","conf-med":"#BA7517","conf-low":"#555"}.get(conf_cls, "#555")
 
-    html = (
-        "<div style='background:#141417;border:1px solid #222;border-radius:10px;padding:16px;margin-bottom:4px'>"
-        + title_badge +
-        "<div style='display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;margin-bottom:14px'>"
-            "<div>"
-                "<div style='color:#fff;font-size:17px;font-weight:700;margin-bottom:2px'>" + r_name + "</div>"
-                "<div style='color:#888;font-size:13px'>" + str(r_wins) + "W · " + str(r_losses) + "L</div>"
-            "</div>"
-            "<div style='text-align:center;padding:8px 14px;background:#0d0d0f;border-radius:8px;min-width:80px'>"
-                "<div style='color:#555;font-size:11px;margin-bottom:4px'>PICK</div>"
-                "<div style='color:#fff;font-size:15px;font-weight:700'>" + venc_first + "</div>"
-                "<div style='color:#888;font-size:11px;margin-top:2px'>" + conf + "</div>"
-            "</div>"
-            "<div style='text-align:right'>"
-                "<div style='color:#fff;font-size:17px;font-weight:700;margin-bottom:2px'>" + b_name + "</div>"
-                "<div style='color:#888;font-size:13px'>" + str(b_wins) + "W · " + str(b_losses) + "L</div>"
-            "</div>"
+    title_html = ""
+    if titulo:
+        title_html = "<div class='fc-title'>🏆 Title Fight</div>"
+
+    pct_r_color = "#E24B4A" if pick_r else "#444"
+    pct_b_color = "#378ADD" if not pick_r else "#444"
+
+    card_html = (
+        "<div class='fc'>"
+        + title_html +
+        "<div class='fc-row'>"
+          "<div class='fc-fighter-r'>"
+            "<div class='fc-name'>" + r_name + "</div>"
+            "<div class='fc-record'>" + str(r_wins) + "W · " + str(r_losses) + "L</div>"
+          "</div>"
+          "<div class='fc-pick'>"
+            "<div class='fc-pick-label'>Pick</div>"
+            "<div class='fc-pick-name'>" + venc_first + "</div>"
+            "<div class='fc-pick-conf' style='color:" + conf_color + "'>" + conf + "</div>"
+          "</div>"
+          "<div class='fc-fighter-b'>"
+            "<div class='fc-name'>" + b_name + "</div>"
+            "<div class='fc-record'>" + str(b_wins) + "W · " + str(b_losses) + "L</div>"
+          "</div>"
         "</div>"
-        "<div style='display:grid;grid-template-columns:1fr 1fr;gap:8px'>"
-            "<div>"
-                "<div style='display:flex;justify-content:space-between;margin-bottom:4px'>"
-                    "<span style='color:#ccc;font-size:13px'>" + r_first + "</span>"
-                    "<span style='color:" + pick_color_r + ";font-size:13px;font-weight:700'>" + str(prob_r) + "%</span>"
-                "</div>"
-                "<div style='height:5px;background:#1e1e1e;border-radius:3px;overflow:hidden'>"
-                    "<div style='width:" + str(prob_r) + "%;height:100%;background:#E24B4A;border-radius:3px'></div>"
-                "</div>"
+        "<div class='fc-bars'>"
+          "<div class='fc-bar-wrap'>"
+            "<div class='fc-bar-head'>"
+              "<span class='fc-bar-name'>" + r_name.split()[0] + "</span>"
+              "<span style='color:" + pct_r_color + ";font-size:13px;font-weight:700'>" + str(prob_r) + "%</span>"
             "</div>"
-            "<div>"
-                "<div style='display:flex;justify-content:space-between;margin-bottom:4px'>"
-                    "<span style='color:#ccc;font-size:13px'>" + b_first + "</span>"
-                    "<span style='color:" + pick_color_b + ";font-size:13px;font-weight:700'>" + str(prob_b) + "%</span>"
-                "</div>"
-                "<div style='height:5px;background:#1e1e1e;border-radius:3px;overflow:hidden'>"
-                    "<div style='width:" + str(prob_b) + "%;height:100%;background:#378ADD;border-radius:3px'></div>"
-                "</div>"
+            "<div class='fc-bar-track'><div class='fc-bar-fill-r' style='width:" + str(prob_r) + "%'></div></div>"
+          "</div>"
+          "<div class='fc-bar-wrap'>"
+            "<div class='fc-bar-head'>"
+              "<span class='fc-bar-name'>" + b_name.split()[0] + "</span>"
+              "<span style='color:" + pct_b_color + ";font-size:13px;font-weight:700'>" + str(prob_b) + "%</span>"
             "</div>"
+            "<div class='fc-bar-track'><div class='fc-bar-fill-b' style='width:" + str(prob_b) + "%'></div></div>"
+          "</div>"
         "</div>"
         "</div>"
     )
-    st.markdown(html, unsafe_allow_html=True)
+    st.markdown(card_html, unsafe_allow_html=True)
 
-    col1, col2, col3 = st.columns([2, 3, 2])
+    col1, col2, col3 = st.columns([5, 6, 5])
     with col1:
-        if st.button(f"👤 {luta['R_fighter'].split()[0]}", key=f"pr_{evento_nome}_{idx}_{luta['R_fighter']}"):
-            st.session_state.lutador_selecionado = luta["R_fighter"]
+        if st.button(f"👤 {r_name.split()[0]}", key=f"pr_{evento_nome}_{idx}_{r_name}"):
+            st.session_state.lutador_selecionado = r_name
             st.session_state.pagina = "perfil"
             st.rerun()
     with col2:
         if st.button("⚔ Full matchup", key=f"vs_{evento_nome}_{idx}", use_container_width=True):
-            st.session_state.nome_r = luta["R_fighter"]
-            st.session_state.nome_b = luta["B_fighter"]
+            st.session_state.nome_r = r_name
+            st.session_state.nome_b = b_name
             st.session_state.pagina = "confronto"
             st.rerun()
     with col3:
-        if st.button(f"👤 {luta['B_fighter'].split()[0]}", key=f"pb_{evento_nome}_{idx}_{luta['B_fighter']}"):
-            st.session_state.lutador_selecionado = luta["B_fighter"]
+        if st.button(f"👤 {b_name.split()[0]}", key=f"pb_{evento_nome}_{idx}_{b_name}"):
+            st.session_state.lutador_selecionado = b_name
             st.session_state.pagina = "perfil"
             st.rerun()
-    st.markdown("<div style='margin-bottom:12px'></div>", unsafe_allow_html=True)
+    st.markdown("<div style='margin-bottom:8px'></div>", unsafe_allow_html=True)
 
 @st.cache_data(ttl=86400)
 def encontrar_link_sherdog(nome):
