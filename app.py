@@ -387,18 +387,16 @@ def gerar_tags(perfil):
     return tags
 
 @st.cache_data(ttl=3600)
-def buscar_odds_map(_v=2):
+def buscar_odds_map(_v=3):
     key = st.secrets.get("ODDS_API_KEY", os.environ.get("ODDS_API_KEY", ""))
     if not key:
-        st.session_state["_odds_debug"] = "NO KEY FOUND in secrets or env"
-        return {}
+        return {"_error": "NO_KEY"}
     try:
         url = "https://api.the-odds-api.com/v4/sports/mma_mixed_martial_arts/odds"
         params = {"apiKey": key, "regions": "us", "markets": "h2h", "oddsFormat": "american"}
         resp = requests.get(url, params=params, timeout=10)
-        st.session_state["_odds_debug"] = f"key_len={len(key)} status={resp.status_code} body={resp.text[:120]}"
         if resp.status_code != 200:
-            return {}
+            return {"_error": f"HTTP_{resp.status_code}: {resp.text[:80]}"}
         data = resp.json()
         odds_map = {}
         for fight in data:
@@ -843,8 +841,10 @@ def mostrar_confronto(nome_r, nome_b):
     odds_map = buscar_odds_map()
     r_odds = odds_map.get(nome_r.lower())
     b_odds = odds_map.get(nome_b.lower())
-    if not odds_map:
-        st.caption("⚠ Live odds unavailable — debug: " + str(st.session_state.get("_odds_debug", "no info")))
+    if odds_map.get("_error"):
+        st.caption("⚠ Live odds unavailable — " + odds_map["_error"])
+    elif not odds_map:
+        st.caption("⚠ Live odds map empty")
     elif r_odds is None or b_odds is None:
         st.caption(f"⚠ No live odds for this matchup (map has {len(odds_map)} fighters; looked for '{nome_r.lower()}' / '{nome_b.lower()}')")
     if r_odds is not None and b_odds is not None:
