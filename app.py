@@ -570,7 +570,7 @@ def render_fight(luta, evento_nome, idx=0):
             st.session_state.pagina = "perfil"
             st.rerun()
     with col_mid:
-        if st.button("⚔ View matchup", key=f"vs_{evento_nome}_{idx}", type="primary", use_container_width=True):
+        if st.button("⚔ View matchup", key=f"vs_{evento_nome}_{idx}", type="primary"):
             st.session_state.nome_r = luta["R_fighter"]
             st.session_state.nome_b = luta["B_fighter"]
             st.session_state.pagina = "confronto"
