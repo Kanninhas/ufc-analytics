@@ -7,65 +7,113 @@
       {
         "R": "Belal Muhammad",
         "B": "Gabriel Bonfim",
-        "predicted": "Gabriel Bonfim"
+        "predicted": "Gabriel Bonfim",
+        "R_odds": -127,
+        "B_odds": 104,
+        "market_fav": "Belal Muhammad",
+        "agrees_market": false
       },
       {
         "R": "Brendan Allen",
         "B": "Edmen Shahbazyan",
-        "predicted": "Edmen Shahbazyan"
+        "predicted": "Brendan Allen",
+        "R_odds": -221,
+        "B_odds": 180,
+        "market_fav": "Brendan Allen",
+        "agrees_market": true
       },
       {
         "R": "Fares Ziam",
         "B": "Tom Nolan",
-        "predicted": "Fares Ziam"
+        "predicted": "Fares Ziam",
+        "R_odds": -315,
+        "B_odds": 250,
+        "market_fav": "Fares Ziam",
+        "agrees_market": true
       },
       {
         "R": "Bryce Mitchell",
         "B": "Santiago Luna",
-        "predicted": "Bryce Mitchell"
+        "predicted": "Bryce Mitchell",
+        "R_odds": -142,
+        "B_odds": 116,
+        "market_fav": "Bryce Mitchell",
+        "agrees_market": true
       },
       {
         "R": "Matt Schnell",
         "B": "Alessandro Costa",
-        "predicted": "Alessandro Costa"
+        "predicted": "Alessandro Costa",
+        "R_odds": 523,
+        "B_odds": -783,
+        "market_fav": "Alessandro Costa",
+        "agrees_market": true
       },
       {
         "R": "Iwo Baraniewski",
         "B": "Junior Tafa",
-        "predicted": "Iwo Baraniewski"
+        "predicted": "Iwo Baraniewski",
+        "R_odds": -311,
+        "B_odds": 250,
+        "market_fav": "Iwo Baraniewski",
+        "agrees_market": true
       },
       {
         "R": "Marcus Mc Ghee",
         "B": "John Yannis",
-        "predicted": "Marcus Mc Ghee"
+        "predicted": "Marcus Mc Ghee",
+        "R_odds": null,
+        "B_odds": 362,
+        "market_fav": null,
+        "agrees_market": false
       },
       {
         "R": "Bruno Silva",
         "B": "Edgar Chairez",
-        "predicted": "Edgar Chairez"
+        "predicted": "Bruno Silva",
+        "R_odds": -133,
+        "B_odds": 111,
+        "market_fav": "Bruno Silva",
+        "agrees_market": true
       },
       {
         "R": "Priscila Cachoeira",
         "B": "Chelsea Chandler",
-        "predicted": "Chelsea Chandler"
+        "predicted": "Priscila Cachoeira",
+        "R_odds": -2,
+        "B_odds": -120,
+        "market_fav": "Chelsea Chandler",
+        "agrees_market": false
       },
       {
         "R": "Jordan Leavitt",
         "B": "Joanderson Brito",
-        "predicted": "Joanderson Brito"
+        "predicted": "Jordan Leavitt",
+        "R_odds": 147,
+        "B_odds": -178,
+        "market_fav": "Joanderson Brito",
+        "agrees_market": false
       },
       {
         "R": "Jeisla Chaves",
         "B": "Yuneisy Duben",
-        "predicted": "Jeisla Chaves"
+        "predicted": "Jeisla Chaves",
+        "R_odds": -406,
+        "B_odds": 305,
+        "market_fav": "Jeisla Chaves",
+        "agrees_market": true
       },
       {
         "R": "Ketlen Souza",
         "B": "Ariane Carnelossi",
-        "predicted": "Ketlen Souza"
+        "predicted": "Ketlen Souza",
+        "R_odds": -274,
+        "B_odds": 222,
+        "market_fav": "Ketlen Souza",
+        "agrees_market": true
       }
     ],
     "locked": true,
-    "locked_at": "2026-06-01 08:12"
+    "locked_at": "2026-06-01 08:26"
   }
 ]
