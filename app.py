@@ -171,12 +171,12 @@ st.markdown("""
     /* Fight card redesign */
     .fc { background:#111318; border:1px solid #1e2028; border-radius:14px; padding:20px 20px 14px 20px; margin-bottom:12px; }
     .fc-title { color:#f0a020; font-size:11px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; margin-bottom:12px; }
-    .fc-row { display:flex; justify-content:space-between; align-items:center; gap:12px; margin-bottom:18px; }
-    .fc-fighter-r { }
-    .fc-fighter-b { text-align:right; margin-left:auto; width:100%; }
+    .fc-row { display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; }
+    .fc-fighter-r { flex:1; }
+    .fc-fighter-b { text-align:right; flex:1; }
     .fc-name { color:#f0f0f0; font-size:16px; font-weight:700; line-height:1.2; margin-bottom:4px; }
     .fc-record { color:#555; font-size:12px; }
-    .fc-pick { text-align:center; }
+    .fc-pick { text-align:center; flex-shrink:0; width:90px; }
     .fc-pick-label { color:#444; font-size:10px; letter-spacing:.06em; text-transform:uppercase; margin-bottom:4px; }
     .fc-pick-name { color:#fff; font-size:13px; font-weight:700; }
     .fc-pick-conf { font-size:10px; margin-top:3px; }
