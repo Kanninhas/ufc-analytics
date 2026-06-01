@@ -837,6 +837,58 @@ def mostrar_confronto(nome_r, nome_b):
     </div>
     """, unsafe_allow_html=True)
 
+    # Model vs market
+    odds_map = buscar_odds_map()
+    r_odds = odds_map.get(nome_r.lower())
+    b_odds = odds_map.get(nome_b.lower())
+    if r_odds is not None and b_odds is not None:
+        market_fav = nome_r if r_odds < b_odds else nome_b
+        def implied(o):
+            return round((abs(o)/(abs(o)+100))*100 if o < 0 else (100/(o+100))*100, 1)
+        imp_r = implied(r_odds); imp_b = implied(b_odds)
+        agree = (market_fav == vencedor)
+        verdict = "Model agrees with the betting market" if agree else "Model DISAGREES with the market — sees an upset"
+        vcolor = "#3fb950" if agree else "#f0a020"
+        st.markdown(f"""
+        <div style="background:#111;border:1px solid #1e1e1e;border-radius:12px;padding:16px;margin-top:10px">
+            <div style="font-size:13px;color:#555;margin-bottom:10px">Model vs. betting market</div>
+            <div style="display:flex;justify-content:space-between;font-size:13px;color:#ccc;margin-bottom:6px">
+                <span>{nome_r}: <b>{'+' if r_odds>0 else ''}{r_odds}</b> ({imp_r}% implied)</span>
+                <span>{nome_b}: <b>{'+' if b_odds>0 else ''}{b_odds}</b> ({imp_b}% implied)</span>
+            </div>
+            <div style="color:{vcolor};font-weight:600;font-size:14px;margin-top:8px">{verdict}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+    # Head-to-head comparison strip
+    st.markdown('<div class="section-title" style="margin-top:16px">Head-to-head</div>', unsafe_allow_html=True)
+    def adv_row(label, val_r, val_b, higher_better=True):
+        try:
+            fr = float(str(val_r).replace("cm","").replace("%","").strip())
+            fb = float(str(val_b).replace("cm","").replace("%","").strip())
+            if fr == fb:
+                cr = cb = "#888"
+            elif (fr > fb) == higher_better:
+                cr, cb = "#3fb950", "#888"
+            else:
+                cr, cb = "#888", "#3fb950"
+        except:
+            cr = cb = "#ccc"
+        st.markdown(
+            f"<div style='display:flex;align-items:center;padding:6px 0;border-bottom:1px solid #161616'>"
+            f"<span style='flex:1;text-align:right;color:{cr};font-weight:600'>{val_r}</span>"
+            f"<span style='width:130px;text-align:center;color:#555;font-size:12px'>{label}</span>"
+            f"<span style='flex:1;color:{cb};font-weight:600'>{val_b}</span>"
+            f"</div>", unsafe_allow_html=True
+        )
+    adv_row(f"{perfil_r['wins']}-{perfil_r['losses']}", perfil_r['wins'], perfil_b['wins'])
+    st.markdown(f"<div style='text-align:center;color:#444;font-size:11px;margin-top:-4px;margin-bottom:4px'>RECORD &nbsp;·&nbsp; {perfil_b['wins']}-{perfil_b['losses']}</div>", unsafe_allow_html=True)
+    adv_row("KO wins", perfil_r['ko_wins'], perfil_b['ko_wins'])
+    adv_row("Sub wins", perfil_r['sub_wins'], perfil_b['sub_wins'])
+    adv_row("Striking %", perfil_r['sig_str_pct'], perfil_b['sig_str_pct'])
+    adv_row("Takedown %", perfil_r['td_pct'], perfil_b['td_pct'])
+    adv_row("Win streak", perfil_r['win_streak'], perfil_b['win_streak'])
+
 # Session state
 if "pagina" not in st.session_state:
     st.session_state.pagina = "home"
