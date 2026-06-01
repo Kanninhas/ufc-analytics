@@ -543,43 +543,70 @@ def render_fight(luta, evento_nome, idx=0):
     r_losses = perfil_r["losses"] if perfil_r else 0
     b_wins = perfil_b["wins"] if perfil_b else 0
     b_losses = perfil_b["losses"] if perfil_b else 0
+    pick_r = vencedor == luta["R_fighter"]
 
-    if titulo:
-        st.markdown("🏆 **Title fight**")
+    # Single HTML card - clean, readable
+    title_badge = "<div style='text-align:center;margin-bottom:8px'><span style='background:#f0a020;color:#000;font-size:11px;font-weight:700;padding:3px 10px;border-radius:4px'>🏆 TITLE FIGHT</span></div>" if titulo else ""
 
-    col1, col2, col3 = st.columns([3, 2, 3])
-    with col1:
-        st.markdown(f"**{luta['R_fighter']}**")
-        st.caption(f"{r_wins}W · {r_losses}L")
-    with col2:
-        st.markdown(f"<div style='text-align:center;color:#555;font-size:12px'>vs<br><b style='color:#fff'>{vencedor.split()[0]}</b><br><small>{conf}</small></div>", unsafe_allow_html=True)
-    with col3:
-        st.markdown(f"**{luta['B_fighter']}**")
-        st.caption(f"{b_wins}W · {b_losses}L")
+    st.markdown(f"""
+    <div style="background:#141417;border:1px solid #222;border-radius:10px;padding:16px;margin-bottom:4px">
+        {title_badge}
+        <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:12px;margin-bottom:14px">
+            <div>
+                <div style="color:#fff;font-size:17px;font-weight:700;margin-bottom:2px">{luta['R_fighter']}</div>
+                <div style="color:#666;font-size:13px">{r_wins}W · {r_losses}L</div>
+            </div>
+            <div style="text-align:center;padding:8px 14px;background:#0d0d0f;border-radius:8px;min-width:80px">
+                <div style="color:#555;font-size:11px;margin-bottom:4px">PICK</div>
+                <div style="color:#fff;font-size:15px;font-weight:700">{vencedor.split()[0]}</div>
+                <div style="color:#888;font-size:11px;margin-top:2px">{conf}</div>
+            </div>
+            <div style="text-align:right">
+                <div style="color:#fff;font-size:17px;font-weight:700;margin-bottom:2px">{luta['B_fighter']}</div>
+                <div style="color:#666;font-size:13px">{b_wins}W · {b_losses}L</div>
+            </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:4px">
+            <div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+                    <span style="color:#aaa;font-size:12px">{luta['R_fighter'].split()[0]}</span>
+                    <span style="color:{'#E24B4A' if pick_r else '#666'};font-size:12px;font-weight:700">{prob_r}%</span>
+                </div>
+                <div style="height:5px;background:#1e1e1e;border-radius:3px;overflow:hidden">
+                    <div style="width:{prob_r}%;height:100%;background:#E24B4A;border-radius:3px"></div>
+                </div>
+            </div>
+            <div>
+                <div style="display:flex;justify-content:space-between;margin-bottom:3px">
+                    <span style="color:#aaa;font-size:12px">{luta['B_fighter'].split()[0]}</span>
+                    <span style="color:{'#378ADD' if not pick_r else '#666'};font-size:12px;font-weight:700">{prob_b}%</span>
+                </div>
+                <div style="height:5px;background:#1e1e1e;border-radius:3px;overflow:hidden">
+                    <div style="width:{prob_b}%;height:100%;background:#378ADD;border-radius:3px"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    col_p1, col_p2 = st.columns(2)
-    with col_p1:
-        st.progress(prob_r / 100, text=f"{luta['R_fighter'].split()[0]}: {prob_r}%")
-    with col_p2:
-        st.progress(prob_b / 100, text=f"{luta['B_fighter'].split()[0]}: {prob_b}%")
-
-    col1, col2 = st.columns(2)
+    col1, col2, col3 = st.columns([2, 3, 2])
     with col1:
         if st.button(f"👤 {luta['R_fighter'].split()[0]}", key=f"pr_{evento_nome}_{idx}_{luta['R_fighter']}"):
             st.session_state.lutador_selecionado = luta["R_fighter"]
             st.session_state.pagina = "perfil"
             st.rerun()
     with col2:
+        if st.button("⚔ Full matchup", key=f"vs_{evento_nome}_{idx}", use_container_width=True):
+            st.session_state.nome_r = luta["R_fighter"]
+            st.session_state.nome_b = luta["B_fighter"]
+            st.session_state.pagina = "confronto"
+            st.rerun()
+    with col3:
         if st.button(f"👤 {luta['B_fighter'].split()[0]}", key=f"pb_{evento_nome}_{idx}_{luta['B_fighter']}"):
             st.session_state.lutador_selecionado = luta["B_fighter"]
             st.session_state.pagina = "perfil"
             st.rerun()
-    if st.button(f"⚔ {luta['R_fighter'].split()[0]} vs {luta['B_fighter'].split()[0]} — full matchup", key=f"vs_{evento_nome}_{idx}"):
-        st.session_state.nome_r = luta["R_fighter"]
-        st.session_state.nome_b = luta["B_fighter"]
-        st.session_state.pagina = "confronto"
-        st.rerun()
-    st.divider()
+    st.markdown("<div style='margin-bottom:12px'></div>", unsafe_allow_html=True)
 
 @st.cache_data(ttl=86400)
 def encontrar_link_sherdog(nome):
