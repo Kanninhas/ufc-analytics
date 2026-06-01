@@ -841,6 +841,10 @@ def mostrar_confronto(nome_r, nome_b):
     odds_map = buscar_odds_map()
     r_odds = odds_map.get(nome_r.lower())
     b_odds = odds_map.get(nome_b.lower())
+    if not odds_map:
+        st.caption("⚠ Live odds unavailable (odds map empty — API key issue)")
+    elif r_odds is None or b_odds is None:
+        st.caption(f"⚠ No live odds for this matchup (map has {len(odds_map)} fighters; looked for '{nome_r.lower()}' / '{nome_b.lower()}')")
     if r_odds is not None and b_odds is not None:
         market_fav = nome_r if r_odds < b_odds else nome_b
         def implied(o):
