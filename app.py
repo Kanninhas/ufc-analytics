@@ -645,6 +645,32 @@ def mostrar_perfil(nome):
         for s in rich["insights"]["insights"]:
             st.markdown(f"<div style='padding:8px 12px;background:#16161a;border-left:3px solid #E24B4A;border-radius:4px;margin-bottom:6px;font-size:14px;color:#ddd'>{s}</div>", unsafe_allow_html=True)
 
+    # Full fight history from Sherdog
+    if rich and rich["profile"].get("fights"):
+        st.divider()
+        st.markdown('<div class="section-title">Fight history</div>', unsafe_allow_html=True)
+        flog = rich["profile"]["fights"]
+        show_all = st.toggle("Show full career", value=False, key="fhist_toggle")
+        display_fights = flog if show_all else flog[:10]
+        for f in display_fights:
+            res = f["result"].upper()
+            badge_color = "#3fb950" if res == "WIN" else ("#E24B4A" if res == "LOSS" else "#888")
+            badge = "W" if res == "WIN" else ("L" if res == "LOSS" else "•")
+            method = f.get("method", "")
+            rnd = f.get("round", "")
+            date = f.get("date", "")
+            opp = f.get("opponent", "Unknown")
+            st.markdown(
+                f"<div style='display:flex;align-items:center;gap:10px;padding:7px 10px;background:#141417;border-radius:5px;margin-bottom:4px'>"
+                f"<span style='display:inline-flex;align-items:center;justify-content:center;width:22px;height:22px;border-radius:50%;background:{badge_color}22;color:{badge_color};font-weight:700;font-size:12px'>{badge}</span>"
+                f"<span style='flex:1;color:#eee;font-size:14px'>vs <b>{opp}</b></span>"
+                f"<span style='color:#888;font-size:12px;text-align:right'>{method}{(' · R'+rnd) if rnd else ''}<br>{date}</span>"
+                f"</div>",
+                unsafe_allow_html=True
+            )
+        if not show_all and len(flog) > 10:
+            st.caption(f"Showing 10 of {len(flog)} fights — toggle above for full career")
+
     st.divider()
     st.markdown('<div class="section-title">Recent form</div>', unsafe_allow_html=True)
 
