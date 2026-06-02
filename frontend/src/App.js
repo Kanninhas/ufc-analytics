@@ -166,7 +166,7 @@ function FightCard({ fight, onProfile, onMatchup }) {
 
 function EventsPage({ onProfile, onMatchup }) {
   const [events, setEvents] = useState([]);
-  const [selectedIdx, setSelectedIdx] = useState(0);
+  const [selectedIdx, setSelectedIdx] = useState(null);
   const [card, setCard] = useState(null);
   const [loadingCard, setLoadingCard] = useState(false);
 
@@ -176,37 +176,45 @@ function EventsPage({ onProfile, onMatchup }) {
     });
   }, []);
 
-  useEffect(() => {
-    if (events.length === 0) return;
+  const selectEvent = (i) => {
+    if (selectedIdx === i) {
+      setSelectedIdx(null);
+      setCard(null);
+      return;
+    }
+    setSelectedIdx(i);
     setLoadingCard(true);
     setCard(null);
-    fetch(`${API}/events/${selectedIdx}/card`)
+    fetch(`${API}/events/${i}/card`)
       .then(r => r.json())
       .then(data => { setCard(data); setLoadingCard(false); });
-  }, [selectedIdx, events]);
+  };
 
   return (
     <div>
-      <div className="event-list">
-        {events.map((ev, i) => (
-          <div key={i} className={`event-pill ${i === selectedIdx ? "active" : ""}`} onClick={() => setSelectedIdx(i)}>
+      {events.map((ev, i) => (
+        <div key={i}>
+          <div
+            className={`event-pill ${i === selectedIdx ? "active" : ""}`}
+            onClick={() => selectEvent(i)}
+            style={{marginBottom: i === selectedIdx ? 8 : 6}}
+          >
             <div>
               <div className="event-pill-name">{ev.name}</div>
               <div className="event-pill-meta">{ev.date} · {ev.location?.split(",")[0]}</div>
             </div>
-            <span className="event-pill-arrow">›</span>
+            <span className="event-pill-arrow">{i === selectedIdx ? "∨" : "›"}</span>
           </div>
-        ))}
-      </div>
-      {card && (
-        <>
-          <div className="section-label">Fight card</div>
-          {card.fights?.map((fight, i) => (
-            <FightCard key={i} fight={fight} onProfile={onProfile} onMatchup={onMatchup} />
-          ))}
-        </>
-      )}
-      {loadingCard && <div className="loading">Loading card...</div>}
+          {i === selectedIdx && (
+            <div style={{marginBottom:16}}>
+              {loadingCard && <div className="loading">Loading card...</div>}
+              {card && card.fights?.map((fight, j) => (
+                <FightCard key={j} fight={fight} onProfile={onProfile} onMatchup={onMatchup} />
+              ))}
+            </div>
+          )}
+        </div>
+      ))}
     </div>
   );
 }
