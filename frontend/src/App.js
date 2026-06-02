@@ -213,8 +213,8 @@ function EventsPage({ onProfile, onMatchup }) {
 
 function MatchupPage({ fight, onBack, onProfile }) {
   const [pred, setPred] = useState(fight?.prediction || null);
-  const [profile_r, setProfileR] = useState(null);
-  const [profile_b, setProfileB] = useState(null);
+  const [stats_r, setStatsR] = useState(null);
+  const [stats_b, setStatsB] = useState(null);
 
   useEffect(() => {
     if (!fight) return;
@@ -222,14 +222,20 @@ function MatchupPage({ fight, onBack, onProfile }) {
       fetch(`${API}/predict?fighter_r=${encodeURIComponent(fight.R_fighter)}&fighter_b=${encodeURIComponent(fight.B_fighter)}`)
         .then(r => r.json()).then(setPred);
     }
-    if (fight.R_link) fetch(`${API}/fighter?url=${encodeURIComponent(fight.R_link)}`).then(r=>r.json()).then(setProfileR);
-    if (fight.B_link) fetch(`${API}/fighter?url=${encodeURIComponent(fight.B_link)}`).then(r=>r.json()).then(setProfileB);
+    fetch(`${API}/fighter/stats?name=${encodeURIComponent(fight.R_fighter)}`).then(r=>r.json()).then(setStatsR);
+    fetch(`${API}/fighter/stats?name=${encodeURIComponent(fight.B_fighter)}`).then(r=>r.json()).then(setStatsB);
   }, [fight]);
 
-  const df = (v) => v !== undefined && v !== null ? v : "—";
-  const winColor = (vr, vb) => vr > vb ? "green" : "";
-
   if (!fight) return <div className="loading">Select a fight from the Events tab.</div>;
+
+  const H2HRow = ({label, vr, vb, nr, nb}) => (
+    <div className="h2h-row">
+      <div className={`h2h-val ${nr > nb ? "green" : ""}`}>{vr}</div>
+      <div className="h2h-label">{label}</div>
+      <div className={`h2h-val h2h-val-b ${nb > nr ? "green" : ""}`}>{vb}</div>
+    </div>
+  );
+
   return (
     <div>
       <button className="back-btn" onClick={onBack}>← Back</button>
@@ -238,7 +244,7 @@ function MatchupPage({ fight, onBack, onProfile }) {
         <div className="fight-row" style={{marginBottom:14}}>
           <div className="f-left">
             <div className="f-name">{fight.R_fighter}</div>
-            <div className="f-rec">{profile_r ? `${profile_r.wins}W · ${profile_r.losses}L` : ""}</div>
+            <div className="f-rec">{stats_r ? `${stats_r.wins}W · ${stats_r.losses}L` : ""}</div>
           </div>
           <div className="f-center">
             <div className="pick-label">Prediction</div>
@@ -247,7 +253,7 @@ function MatchupPage({ fight, onBack, onProfile }) {
           </div>
           <div className="f-right">
             <div className="f-name">{fight.B_fighter}</div>
-            <div className="f-rec">{profile_b ? `${profile_b.wins}W · ${profile_b.losses}L` : ""}</div>
+            <div className="f-rec">{stats_b ? `${stats_b.wins}W · ${stats_b.losses}L` : ""}</div>
           </div>
         </div>
         {pred && (
@@ -283,22 +289,21 @@ function MatchupPage({ fight, onBack, onProfile }) {
           </div>
         </div>
       )}
-      {profile_r && profile_b && (
+      {stats_r && stats_b && !stats_r.error && !stats_b.error && (
         <div className="h2h">
           <div className="section-label" style={{marginBottom:8}}>Head-to-head</div>
           <div className="h2h-names">
             <div className="h2h-name-r">{fight.R_fighter}</div>
             <div className="h2h-name-b">{fight.B_fighter}</div>
           </div>
-          {[
-            ["Record", `${profile_r.wins}-${profile_r.losses}`, `${profile_b.wins}-${profile_b.losses}`, profile_r.wins, profile_b.wins],
-          ].map(([label, vr, vb, nr, nb],i) => (
-            <div className="h2h-row" key={i}>
-              <div className={`h2h-val ${nr > nb ? "green" : ""}`}>{vr}</div>
-              <div className="h2h-label">{label}</div>
-              <div className={`h2h-val h2h-val-b ${nb > nr ? "green" : ""}`}>{vb}</div>
-            </div>
-          ))}
+          <H2HRow label="Record" vr={`${stats_r.wins}-${stats_r.losses}`} vb={`${stats_b.wins}-${stats_b.losses}`} nr={stats_r.wins} nb={stats_b.wins} />
+          <H2HRow label="KO wins" vr={stats_r.ko_wins} vb={stats_b.ko_wins} nr={stats_r.ko_wins} nb={stats_b.ko_wins} />
+          <H2HRow label="Sub wins" vr={stats_r.sub_wins} vb={stats_b.sub_wins} nr={stats_r.sub_wins} nb={stats_b.sub_wins} />
+          <H2HRow label="Striking %" vr={`${stats_r.sig_str_pct}%`} vb={`${stats_b.sig_str_pct}%`} nr={stats_r.sig_str_pct} nb={stats_b.sig_str_pct} />
+          <H2HRow label="Takedown %" vr={`${stats_r.td_pct}%`} vb={`${stats_b.td_pct}%`} nr={stats_r.td_pct} nb={stats_b.td_pct} />
+          <H2HRow label="Win streak" vr={stats_r.win_streak} vb={stats_b.win_streak} nr={stats_r.win_streak} nb={stats_b.win_streak} />
+          <H2HRow label="Height cm" vr={stats_r.height_cm} vb={stats_b.height_cm} nr={stats_r.height_cm} nb={stats_b.height_cm} />
+          <H2HRow label="Reach cm" vr={stats_r.reach_cm} vb={stats_b.reach_cm} nr={stats_r.reach_cm} nb={stats_b.reach_cm} />
         </div>
       )}
       <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8,marginTop:12}}>
@@ -308,6 +313,7 @@ function MatchupPage({ fight, onBack, onProfile }) {
     </div>
   );
 }
+
 
 function FighterPage({ name, url, onBack }) {
   const [profile, setProfile] = useState(null);
