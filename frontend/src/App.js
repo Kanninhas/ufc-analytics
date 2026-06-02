@@ -409,6 +409,51 @@ function AccuracyPage() {
   );
 }
 
+
+function FightersPage({ onProfile }) {
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState([]);
+  const [searching, setSearching] = useState(false);
+
+  useEffect(() => {
+    if (query.length < 2) { setResults([]); return; }
+    setSearching(true);
+    const timer = setTimeout(() => {
+      fetch(`${API}/fighter/search?name=${encodeURIComponent(query)}`)
+        .then(r => r.json())
+        .then(data => { setResults(data.results || []); setSearching(false); });
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [query]);
+
+  return (
+    <div>
+      <div className="search-wrap">
+        <input
+          className="search-input"
+          placeholder="Search fighter name..."
+          value={query}
+          onChange={e => setQuery(e.target.value)}
+          autoFocus
+        />
+      </div>
+      {searching && <div className="loading">Searching...</div>}
+      {results.length > 0 && (
+        <div className="search-results">
+          {results.map((name, i) => (
+            <div key={i} className="search-result" onClick={() => onProfile(name, null)}>
+              {name}
+            </div>
+          ))}
+        </div>
+      )}
+      {query.length >= 2 && !searching && results.length === 0 && (
+        <div className="loading">No fighters found.</div>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
   const [tab, setTab] = useState("events");
   const [selectedFight, setSelectedFight] = useState(null);
@@ -435,7 +480,7 @@ export default function App() {
       <div className="nav">
         <div className="nav-logo">UFC<span>analytics</span></div>
         <div className="nav-tabs">
-          {["events","matchup","accuracy"].map(t => (
+          {["events","fighters","matchup","accuracy"].map(t => (
             <button key={t} className={`nav-tab ${tab===t?"active":""}`} onClick={() => setTab(t)}>
               {t.charAt(0).toUpperCase()+t.slice(1)}
             </button>
@@ -444,6 +489,7 @@ export default function App() {
       </div>
       <div className="main">
         {tab === "events" && <EventsPage onProfile={goProfile} onMatchup={goMatchup} />}
+        {tab === "fighters" && <FightersPage onProfile={goProfile} />}
         {tab === "matchup" && <MatchupPage fight={selectedFight} onBack={goBack} onProfile={goProfile} />}
         {tab === "fighter" && <FighterPage name={selectedFighter?.name} url={selectedFighter?.url} onBack={goBack} />}
         {tab === "accuracy" && <AccuracyPage />}
