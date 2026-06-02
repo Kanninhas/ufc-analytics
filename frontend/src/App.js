@@ -222,8 +222,8 @@ function MatchupPage({ fight, onBack, onProfile }) {
       fetch(`${API}/predict?fighter_r=${encodeURIComponent(fight.R_fighter)}&fighter_b=${encodeURIComponent(fight.B_fighter)}`)
         .then(r => r.json()).then(setPred);
     }
-    fetch(`${API}/fighter/stats?name=${encodeURIComponent(fight.R_fighter)}`).then(r=>r.json()).then(setStatsR);
-    fetch(`${API}/fighter/stats?name=${encodeURIComponent(fight.B_fighter)}`).then(r=>r.json()).then(setStatsB);
+    fetch(`${API}/stats?name=${encodeURIComponent(fight.R_fighter)}`).then(r=>r.json()).then(setStatsR);
+    fetch(`${API}/stats?name=${encodeURIComponent(fight.B_fighter)}`).then(r=>r.json()).then(setStatsB);
   }, [fight]);
 
   if (!fight) return <div className="loading">Select a fight from the Events tab.</div>;
