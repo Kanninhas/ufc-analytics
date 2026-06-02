@@ -378,3 +378,44 @@ def get_accuracy():
 @app.get("/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/stats")
+def get_fighter_stats(name: str):
+    df = load_df()
+    mask_r = df["R_lower"] == name.lower()
+    mask_b = df["B_lower"] == name.lower()
+    if mask_r.any():
+        row = df[mask_r].sort_values("date", ascending=False).iloc[0]
+        p = "R_"
+    elif mask_b.any():
+        row = df[mask_b].sort_values("date", ascending=False).iloc[0]
+        p = "B_"
+    else:
+        return {"error": "Fighter not found"}
+    def g(col, default=0):
+        try:
+            v = row.get(f"{p}{col}", default)
+            return round(float(v), 1) if not pd.isna(v) else default
+        except:
+            return default
+    return {
+        "name": name,
+        "wins": int(g("wins")),
+        "losses": int(g("losses")),
+        "ko_wins": int(g("win_by_KO/TKO")),
+        "sub_wins": int(g("win_by_Submission")),
+        "dec_wins": int(g("win_by_Decision_Unanimous")),
+        "win_streak": int(g("current_win_streak")),
+        "sig_str_pct": g("avg_SIG_STR_pct"),
+        "td_pct": g("avg_TD_pct"),
+        "height_cm": g("Height_cms"),
+        "reach_cm": g("Reach_cms"),
+        "age": g("age"),
+    }
+
+@app.get("/fighters")
+def list_fighters():
+    df = load_df()
+    all_fighters = sorted(list(set(df["R_fighter"].tolist() + df["B_fighter"].tolist())))
+    return {"fighters": all_fighters}
