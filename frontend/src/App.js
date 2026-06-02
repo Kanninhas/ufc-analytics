@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 
-const API = "PASTE_YOUR_RENDER_URL_HERE";
+const API = "https://ufc-analytics.onrender.com";
 
 const css = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
