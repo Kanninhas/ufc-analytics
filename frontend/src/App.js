@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useCallback } from "react";
 
-const API = process.env.REACT_APP_API_URL || "http://localhost:8000";
+const API = "PASTE_YOUR_RENDER_URL_HERE";
 
 const css = `
   * { box-sizing: border-box; margin: 0; padding: 0; }
